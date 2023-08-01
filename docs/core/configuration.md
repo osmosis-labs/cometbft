@@ -34,13 +34,13 @@ like the file below, however, double check by inspecting the
 proxy_app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
-moniker = "anonymous"
+moniker = "thinkpad"
 
 # If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 #
-# Deprecated: this key will be removed and BlockSync will be enabled 
+# Deprecated: this key will be removed and BlockSync will be enabled
 # unconditionally in the next major release.
 block_sync = true
 
@@ -148,14 +148,14 @@ unsafe = false
 # 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = 900
 
-# Maximum number of unique clientIDs that can /subscribe
+# Maximum number of unique clientIDs that can /subscribe.
 # If you're using /broadcast_tx_commit, set to the estimated maximum number
 # of broadcast_tx_commit calls per block.
 max_subscription_clients = 100
 
-# Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
-# the estimated # maximum number of broadcast_tx_commit calls per block.
+# Maximum number of unique queries a given client can /subscribe to.
+# If you're using /broadcast_tx_commit, set to the estimated maximum number
+# of broadcast_tx_commit calls per block.
 max_subscriptions_per_client = 5
 
 # Experimental parameter to specify the maximum number of events a node will
@@ -214,6 +214,40 @@ tls_key_file = ""
 
 # pprof listen address (https://golang.org/pkg/net/http/pprof)
 pprof_laddr = ""
+
+#######################################################
+###       gRPC Server Configuration Options         ###
+#######################################################
+
+#
+# Note that the gRPC server is exposed unauthenticated. It is critical that
+# this server not be exposed directly to the public internet. If this service
+# must be accessed via the public internet, please ensure that appropriate
+# precautions are taken (e.g. fronting with a reverse proxy like nginx with TLS
+# termination and authentication, using DDoS protection services like
+# CloudFlare, etc.).
+#
+
+[grpc]
+
+# TCP or UNIX socket address for the RPC server to listen on. If not specified,
+# the gRPC server will be disabled.
+laddr = ""
+
+#
+# Each gRPC service can be turned on/off, and in some cases configured,
+# individually. If the gRPC server is not enabled, all individual services'
+# configurations are ignored.
+#
+
+# The gRPC version service provides version information about the node and the
+# protocols it uses.
+[grpc.version_service]
+enabled = true
+
+# The gRPC block service returns block information
+[grpc.block_service]
+enabled = true
 
 #######################################################
 ###           P2P Configuration Options             ###
@@ -386,7 +420,7 @@ chunk_fetchers = "4"
 [blocksync]
 
 # Block Sync version to use:
-# 
+#
 # In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
@@ -432,6 +466,7 @@ create_empty_blocks_interval = "0s"
 
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "100ms"
+peer_gossip_intraloop_sleep_duration = "0s"
 peer_query_maj23_sleep_duration = "2s"
 
 #######################################################
