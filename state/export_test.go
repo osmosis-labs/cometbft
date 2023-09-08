@@ -64,3 +64,11 @@ func Int64ToBytes(val int64) []byte {
 func Int64FromBytes(val []byte) int64 {
 	return int64FromBytes(val)
 }
+
+func (p *Pruner) PruneTxIndexerToRetainHeight(lastRetainHeight int64) int64 {
+	return p.pruneTxIndexerToRetainHeight(lastRetainHeight)
+}
+
+func (p *Pruner) PruneBlockIndexerToRetainHeight(lastRetainHeight int64) int64 {
+	return p.pruneBlockIndexerToRetainHeight(lastRetainHeight)
+}

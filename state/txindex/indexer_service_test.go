@@ -1,12 +1,12 @@
 package txindex_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	db "github.com/cometbft/cometbft-db"
+	"github.com/stretchr/testify/require"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/log"
@@ -79,4 +79,38 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	res, err = txIndexer.Get(types.Tx("bar").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult2, res)
+}
+
+func getEventsAndResults(height int64) (types.EventDataNewBlockHeader, *abci.TxResult, *abci.TxResult) {
+	events := types.EventDataNewBlockHeader{
+		Header: types.Header{Height: height},
+		ResultBeginBlock: abci.ResponseBeginBlock{
+			Events: []abci.Event{
+				{
+					Type: "begin_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   "proposer",
+							Value: "FCAA001",
+							Index: true,
+						},
+					},
+				},
+			},
+		},
+		NumTxs: int64(2),
+	}
+	txResult1 := &abci.TxResult{
+		Height: height,
+		Index:  uint32(0),
+		Tx:     types.Tx(fmt.Sprintf("foo%d", height)),
+		Result: abci.ResponseDeliverTx{Code: 0},
+	}
+	txResult2 := &abci.TxResult{
+		Height: height,
+		Index:  uint32(1),
+		Tx:     types.Tx(fmt.Sprintf("bar%d", height)),
+		Result: abci.ResponseDeliverTx{Code: 0},
+	}
+	return events, txResult1, txResult2
 }

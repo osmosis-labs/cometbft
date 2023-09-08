@@ -1,19 +1,88 @@
 package kv_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"testing"
+	"time"
 
+	blockidxkv "github.com/cometbft/cometbft/state/indexer/block/kv"
+	"github.com/cometbft/cometbft/state/txindex/kv"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	db "github.com/cometbft/cometbft-db"
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/pubsub/query"
-	blockidxkv "github.com/cometbft/cometbft/state/indexer/block/kv"
 	"github.com/cometbft/cometbft/types"
 )
+
+func TestBlockerIndexer_Prune(t *testing.T) {
+	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	indexer := blockidxkv.New(store)
+
+	events1 := getEventsForTesting(1)
+	events2 := getEventsForTesting(2)
+
+	metaKeys := [][]byte{
+		kv.LastTxIndexerRetainHeightKey,
+		blockidxkv.LastBlockIndexerRetainHeightKey,
+		kv.TxIndexerRetainHeightKey,
+		blockidxkv.BlockIndexerRetainHeightKey,
+	}
+
+	err := indexer.Index(events1)
+	require.NoError(t, err)
+
+	keys1 := blockidxkv.GetKeys(*indexer)
+
+	err = indexer.Index(events2)
+	require.NoError(t, err)
+
+	keys2 := blockidxkv.GetKeys(*indexer)
+
+	require.True(t, isSubset(keys1, keys2))
+
+	numPruned, retainedHeight, err := indexer.Prune(2)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), numPruned)
+	require.Equal(t, int64(2), retainedHeight)
+
+	keys3 := blockidxkv.GetKeys(*indexer)
+	require.True(t, isEqualSets(setDiff(keys2, keys1), setDiff(keys3, metaKeys)))
+	require.True(t, emptyIntersection(keys1, keys3))
+}
+
+func BenchmarkBlockerIndexer_Prune(b *testing.B) {
+	dir, err := os.MkdirTemp("", "tx_index_db")
+	require.NoError(b, err)
+	defer os.RemoveAll(dir)
+
+	store, err := db.NewDB("block", db.GoLevelDBBackend, dir)
+	if err != nil {
+		panic(err)
+	}
+	indexer := blockidxkv.New(store)
+
+	maxHeight := 10000
+	for h := 1; h < maxHeight; h++ {
+		event := getEventsForTesting(int64(h))
+		err := indexer.Index(event)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	startTime := time.Now()
+
+	for h := 1; h <= maxHeight; h++ {
+		_, _, _ = indexer.Prune(int64(h))
+	}
+	fmt.Println(time.Since(startTime))
+}
 
 func TestBlockIndexer(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
@@ -445,4 +514,75 @@ func TestBigInt(t *testing.T) {
 			require.Equal(t, tc.results, results)
 		})
 	}
+}
+
+func getEventsForTesting(height int64) types.EventDataNewBlockHeader {
+	return types.EventDataNewBlockHeader{
+		Header: types.Header{Height: height},
+		ResultBeginBlock: abci.ResponseBeginBlock{
+			Events: []abci.Event{},
+		},
+		ResultEndBlock: abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "begin_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   "proposer",
+							Value: "FCAA001",
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   "foo",
+							Value: "100",
+							Index: true,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func isSubset(smaller [][]byte, bigger [][]byte) bool {
+	for _, elem := range smaller {
+		if !slices.ContainsFunc(bigger, func(i []byte) bool {
+			return bytes.Equal(i, elem)
+		}) {
+			return false
+		}
+	}
+	return true
+}
+
+func isEqualSets(x [][]byte, y [][]byte) bool {
+	return isSubset(x, y) && isSubset(y, x)
+}
+
+func emptyIntersection(x [][]byte, y [][]byte) bool {
+	for _, elem := range x {
+		if slices.ContainsFunc(y, func(i []byte) bool {
+			return bytes.Equal(i, elem)
+		}) {
+			return false
+		}
+	}
+	return true
+}
+
+func setDiff(bigger [][]byte, smaller [][]byte) [][]byte {
+	var diff [][]byte
+	for _, elem := range bigger {
+		if !slices.ContainsFunc(smaller, func(i []byte) bool {
+			return bytes.Equal(i, elem)
+		}) {
+			diff = append(diff, elem)
+		}
+	}
+	return diff
 }

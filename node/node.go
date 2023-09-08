@@ -410,6 +410,7 @@ func createAndStartIndexerService(
 
 		txIndexer = kv.NewTxIndex(store)
 		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+		blockIndexer.SetLogger(logger.With("module", "txindex"))
 
 	case "psql":
 		if config.TxIndex.PsqlConn == "" {
@@ -964,6 +965,8 @@ func NewNodeWithContext(ctx context.Context,
 
 	pruner, err := createPruner(
 		config,
+		txIndexer,
+		blockIndexer,
 		stateStore,
 		blockStore,
 		smMetrics,
@@ -1692,6 +1695,8 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 // We set this to 0 only if the retain height was not set before by the application
 func createPruner(
 	config *cfg.Config,
+	txIndexer txindex.TxIndexer,
+	blockIndexer indexer.BlockIndexer,
 	stateStore sm.Store,
 	blockStore *store.BlockStore,
 	metrics *sm.Metrics,
@@ -1718,7 +1723,7 @@ func createPruner(
 		prunerOpts = append(prunerOpts, sm.WithPrunerCompanionEnabled())
 	}
 
-	return sm.NewPruner(stateStore, blockStore, logger, prunerOpts...), nil
+	return sm.NewPruner(stateStore, blockStore, blockIndexer, txIndexer, logger, prunerOpts...), nil
 }
 
 // Set the initial application retain height to 0 to avoid the data companion

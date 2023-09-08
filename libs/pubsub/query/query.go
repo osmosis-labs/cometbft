@@ -49,6 +49,19 @@ func New(s string) (*Query, error) {
 	return &Query{str: s, parser: p}, nil
 }
 
+// MustCompile compiles the query expression into an executable query.
+// In case of error, MustCompile will panic.
+//
+// This is intended for use in program initialization; use query.New if you
+// need to check errors.
+func MustCompile(query string) *Query {
+	q, err := New(query)
+	if err != nil {
+		panic(err)
+	}
+	return q
+}
+
 // MustParse turns the given string into a query or panics; for tests or others
 // cases where you know the string is valid.
 func MustParse(s string) *Query {

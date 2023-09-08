@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 
+	"github.com/cometbft/cometbft/libs/log"
 	"github.com/cometbft/cometbft/libs/pubsub/query"
 	"github.com/cometbft/cometbft/types"
 )
@@ -21,4 +22,12 @@ type BlockIndexer interface {
 	// Search performs a query for block heights that match a given BeginBlock
 	// and Endblock event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
+
+	SetLogger(l log.Logger)
+
+	Prune(retainHeight int64) (int64, int64, error)
+
+	SetRetainHeight(retainHeight int64) error
+
+	GetRetainHeight() (int64, error)
 }
