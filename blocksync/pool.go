@@ -169,11 +169,11 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	// Need at least 1 peer to be considered caught up.
-	if len(pool.peers) == 0 {
-		pool.Logger.Debug("Blockpool has no peers")
-		return false
-	}
+	// // Need at least 1 peer to be considered caught up.
+	// if len(pool.peers) == 0 {
+	// 	pool.Logger.Debug("Blockpool has no peers")
+	// 	return false
+	// }
 
 	// Some conditions to determine if we're caught up.
 	// Ensures we've either received a block or waited some amount of time,
