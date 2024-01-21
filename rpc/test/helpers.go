@@ -94,11 +94,12 @@ func createConfig() *cfg.Config {
 	c := cfg.ResetTestRoot(pathname)
 
 	// and we use random ports to run in parallel
-	cmt, rpc, grpc := makeAddrs()
-	c.P2P.ListenAddress = cmt
+	tm, rpc, grpc := makeAddrs()
+	c.P2P.ListenAddress = tm
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://cometbft.com/"}
-	c.RPC.GRPCListenAddress = grpc
+	c.GRPC.ListenAddress = grpc
+	c.GRPC.VersionService.Enabled = true
 	return c
 }
 
