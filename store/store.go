@@ -11,6 +11,8 @@ import (
 	cmtstore "github.com/cometbft/cometbft/proto/tendermint/store"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cometbft/cometbft/types"
+	"github.com/go-kit/kit/metrics"
+	"time"
 )
 
 /*
@@ -33,6 +35,7 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 type BlockStore struct {
 	db dbm.DB
 
+	metrics *Metrics
 	// mtx guards access to the struct fields listed below it. We rely on the database to enforce
 	// fine-grained concurrency control for its data, and thus this mutex does not apply to
 	// database contents. The only reason for keeping these fields in the struct is that the data
@@ -43,15 +46,33 @@ type BlockStore struct {
 	height int64
 }
 
+type BlockStoreOption func(*BlockStore)
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) BlockStoreOption {
+	return func(bs *BlockStore) { bs.metrics = metrics }
+}
+
 // NewBlockStore returns a new BlockStore with the given DB,
 // initialized to the last height that was committed to the DB.
-func NewBlockStore(db dbm.DB) *BlockStore {
+func NewBlockStore(db dbm.DB, options ...BlockStoreOption) *BlockStore {
+	start := time.Now()
+
 	bs := LoadBlockStoreState(db)
-	return &BlockStore{
-		base:   bs.Base,
-		height: bs.Height,
-		db:     db,
+	bStore := &BlockStore{
+		db:      db,
+		metrics: NopMetrics(),
+		mtx:     cmtsync.RWMutex{},
+		base:    bs.Base,
+		height:  bs.Height,
 	}
+
+	for _, option := range options {
+		option(bStore)
+	}
+
+	addTimeSample(bStore.metrics.BlockStoreAccessDurationSeconds.With("method", "new_block_store"), start)()
+	return bStore
 }
 
 func (bs *BlockStore) IsEmpty() bool {
@@ -97,6 +118,7 @@ func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
+	start := time.Now()
 	blockMeta := bs.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil
@@ -113,6 +135,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		}
 		buf = append(buf, part.Bytes...)
 	}
+	addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block"), start)()
 	err := proto.Unmarshal(buf, pbb)
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
@@ -132,6 +155,9 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // If no block is found for that hash, it returns nil.
 // Panics if it fails to parse height associated with the given hash.
 func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
+	// WARN this function includes the time for LoadBlock and will count the time it takes to load the entire block, block parts
+	// AND unmarshall
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block_by_hash"), time.Now())()
 	bz, err := bs.db.Get(calcBlockHashKey(hash))
 	if err != nil {
 		panic(err)
@@ -153,7 +179,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 // If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	pbpart := new(cmtproto.Part)
-
+	start := time.Now()
 	bz, err := bs.db.Get(calcBlockPartKey(height, index))
 	if err != nil {
 		panic(err)
@@ -161,6 +187,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	if len(bz) == 0 {
 		return nil
 	}
+	addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block_part"), start)()
 
 	err = proto.Unmarshal(bz, pbpart)
 	if err != nil {
@@ -178,6 +205,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	pbbm := new(cmtproto.BlockMeta)
+	start := time.Now()
 	bz, err := bs.db.Get(calcBlockMetaKey(height))
 	if err != nil {
 		panic(err)
@@ -186,6 +214,8 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	if len(bz) == 0 {
 		return nil
 	}
+
+	addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block_meta"), start)()
 
 	err = proto.Unmarshal(bz, pbbm)
 	if err != nil {
@@ -203,6 +233,8 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // LoadBlockMetaByHash returns the blockmeta who's header corresponds to the given
 // hash. If none is found, returns nil.
 func (bs *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
+	// WARN Same as for block by hash, this includes the time to get the block metadata and unmarshall it
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block_meta_by_hash"), time.Now())()
 	bz, err := bs.db.Get(calcBlockHashKey(hash))
 	if err != nil {
 		panic(err)
@@ -225,10 +257,12 @@ func (bs *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	pbc := new(cmtproto.Commit)
+	start := time.Now()
 	bz, err := bs.db.Get(calcBlockCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
+	addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_block_commit"), start)()
 	if len(bz) == 0 {
 		return nil
 	}
@@ -248,10 +282,12 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	pbc := new(cmtproto.Commit)
+	start := time.Now()
 	bz, err := bs.db.Get(calcSeenCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
+	addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "load_seen_commit"), start)()
 	if len(bz) == 0 {
 		return nil
 	}
@@ -271,6 +307,8 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 // number of blocks pruned and the evidence retain height - the height at which
 // data needed to prove evidence must not be removed.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "prune_blocks"), time.Now())()
+
 	if height <= 0 {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
@@ -369,7 +407,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if !blockParts.IsComplete() {
 		panic("BlockStore can only save complete block part sets")
 	}
-
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_block"), time.Now())()
 	// Save block parts. This must be done before the block meta, since callers
 	// typically load the block meta first as an indication that the block exists
 	// and then go on to load block parts - we must make sure the block is
@@ -421,6 +459,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_block_part"), time.Now())()
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
@@ -438,6 +477,7 @@ func (bs *BlockStore) saveState() {
 		Height: bs.height,
 	}
 	bs.mtx.RUnlock()
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_bs_state"), time.Now())()
 	SaveBlockStoreState(&bss, bs.db)
 }
 
@@ -448,11 +488,18 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	if err != nil {
 		return fmt.Errorf("unable to marshal commit: %w", err)
 	}
+	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_seen_commit"), time.Now())()
 	return bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 }
 
 func (bs *BlockStore) Close() error {
 	return bs.db.Close()
+}
+
+func addTimeSample(h metrics.Histogram, start time.Time) func() {
+	return func() {
+		h.Observe(time.Since(start).Seconds())
+	}
 }
 
 //-----------------------------------------------------------------------------

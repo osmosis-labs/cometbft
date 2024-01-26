@@ -44,4 +44,8 @@ type Metrics struct {
 	// ABCIResultsBaseHeight shows the first height at which
 	// abci results are available
 	ABCIResultsBaseHeight metrics.Gauge
+
+	// The duration of accesses to the state store labeled by which method
+	// was called on the store.
+	StoreAccessDurationSeconds metrics.Histogram `metrics_bucketsizes:"0.0002, 10, 5" metrics_buckettype:"exp" metrics_labels:"method"`
 }
