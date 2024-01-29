@@ -1,10 +1,8 @@
 package state
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/cosmos/gogoproto/proto"
 
@@ -17,7 +15,11 @@ import (
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	"github.com/cometbft/cometbft/types"
 
+	"time"
+
 	"github.com/go-kit/kit/metrics"
+
+	"encoding/binary"
 )
 
 const (
