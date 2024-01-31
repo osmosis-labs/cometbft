@@ -47,6 +47,8 @@ type BlockStore struct {
 	mtx    cmtsync.RWMutex
 	base   int64
 	height int64
+
+	blocksDeleted int64
 }
 
 type BlockStoreOption func(*BlockStore)
@@ -385,6 +387,13 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	err := flush(batch, height)
 	if err != nil {
 		return 0, err
+	}
+
+	bs.blocksDeleted += int64(pruned)
+
+	if bs.blocksDeleted >= 1000 {
+		err = bs.db.Compact(nil, nil)
+		bs.blocksDeleted = 0
 	}
 	return pruned, nil
 }
