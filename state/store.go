@@ -106,13 +106,15 @@ type Store interface {
 	Close() error
 }
 
+// type MetricsFunc func() *Metrics
+
 // dbStore wraps a db (github.com/cometbft/cometbft-db)
 type dbStore struct {
 	db dbm.DB
 
-	metrics *Metrics
-
 	StoreOptions
+
+	metrics *Metrics
 }
 
 type StoreOptions struct {
@@ -139,15 +141,18 @@ func IsEmpty(store dbStore) (bool, error) {
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB, options StoreOptions) Store {
-	m := NopMetrics()
-	if options.Metrics != nil {
-		m = options.Metrics
+
+	if options.Metrics == nil {
+		options.Metrics = NopMetrics()
 	}
-	return dbStore{
+
+	dbS := dbStore{
 		db:           db,
-		metrics:      m,
 		StoreOptions: options,
+		metrics:      options.Metrics,
 	}
+
+	return dbS
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
@@ -257,6 +262,7 @@ func (store dbStore) save(state State, key []byte) error {
 	if err := store.db.SetSync(key, stateBytes); err != nil {
 		return err
 	}
+
 	store.metrics.StoreAccessDurationSeconds.With("method", "save").Observe(time.Since(start).Seconds() - stateMarshallDiff)
 	return nil
 }
@@ -429,6 +435,13 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 	err = batch.WriteSync()
 	if err != nil {
 		return err
+	}
+
+	if to%1000 == 0 || pruned > 1000 {
+		err := store.db.Compact(nil, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -902,12 +915,19 @@ type BootstrapStore struct {
 }
 
 func NewBootstrapStore(db dbm.DB, options StoreOptions) BootstrapStore {
-	return BootstrapStore{
-		dbStore{
-			db:           db,
-			StoreOptions: options,
-		},
+	if options.Metrics == nil {
+		options.Metrics = NopMetrics()
 	}
+	dbS := dbStore{
+		db:           db,
+		StoreOptions: options,
+	}
+
+	dbS.metrics = dbS.StoreOptions.Metrics
+	bstore := BootstrapStore{
+		dbStore: dbS,
+	}
+	return bstore
 }
 
 func (store BootstrapStore) SetOfflineStateSyncHeight(height int64) error {

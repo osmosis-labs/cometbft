@@ -410,7 +410,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if !blockParts.IsComplete() {
 		panic("BlockStore can only save complete block part sets")
 	}
-	defer addTimeSample(bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_block"), time.Now())()
+	start := time.Now()
+
 	// Save block parts. This must be done before the block meta, since callers
 	// typically load the block meta first as an indication that the block exists
 	// and then go on to load block parts - we must make sure the block is
@@ -420,6 +421,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		bs.saveBlockPart(height, i, part)
 	}
 
+	marshallTime := time.Now()
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	pbm := blockMeta.ToProto()
@@ -427,6 +429,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("nil blockmeta")
 	}
 	metaBytes := mustEncode(pbm)
+	marshallTimeDiff := time.Since(marshallTime)
 	if err := bs.db.Set(calcBlockMetaKey(height), metaBytes); err != nil {
 		panic(err)
 	}
@@ -435,16 +438,20 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block commit (duplicate and separate from the Block)
+	marshallTime = time.Now()
 	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
+	marshallTimeDiff += time.Since(marshallTime)
 	if err := bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes); err != nil {
 		panic(err)
 	}
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
+	marshallTime = time.Now()
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
+	marshallTimeDiff += time.Since(marshallTime)
 	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
@@ -459,6 +466,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save new BlockStoreState descriptor. This also flushes the database.
 	bs.saveState()
+	bs.metrics.BlockStoreAccessDurationSeconds.With("method", "save_block").Observe(time.Since(start).Seconds() - marshallTimeDiff.Seconds())
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
