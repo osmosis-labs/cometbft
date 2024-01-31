@@ -64,6 +64,14 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "abciresults_base_height",
 			Help:      "ABCIResultsBaseHeight shows the first height at which abci results are available",
 		}, labels).With(labelsAndValues...),
+		StoreAccessDurationSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "store_access_duration_seconds",
+			Help:      "The duration of accesses to the state store labeled by which method was called on the store.",
+
+			Buckets: stdprometheus.ExponentialBuckets(0.0002, 10, 5),
+		}, append(labels, "method")).With(labelsAndValues...),
 	}
 }
 
@@ -77,5 +85,6 @@ func NopMetrics() *Metrics {
 		ApplicationBlockRetainHeight:           discard.NewGauge(),
 		BlockStoreBaseHeight:                   discard.NewGauge(),
 		ABCIResultsBaseHeight:                  discard.NewGauge(),
+		StoreAccessDurationSeconds:             discard.NewHistogram(),
 	}
 }
