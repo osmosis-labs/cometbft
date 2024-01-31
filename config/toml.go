@@ -547,6 +547,9 @@ initial_block_retain_height = {{ .Storage.Pruning.DataCompanion.InitialBlockReta
 # already set a block results retain height, this is ignored.
 initial_block_results_retain_height = {{ .Storage.Pruning.DataCompanion.InitialBlockResultsRetainHeight }}
 
+
+compact_on_pruning = true
+compaction_interval = 1000
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
 #######################################################

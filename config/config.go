@@ -1187,6 +1187,11 @@ type StorageConfig struct {
 	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
 	// Configuration related to storage pruning.
 	Pruning *PruningConfig `mapstructure:"pruning"`
+	// Compaction config
+	CompactOnPruning bool `mapstructure:"compact_on_pruning"`
+	// Compaction interval - number of blocks to try explicit compaciton on
+	// 1000 by defualt
+	CompactionInterval int64 `mapstructure:"compaction_interval"`
 }
 
 // DefaultStorageConfig returns the default configuration options relating to
@@ -1195,6 +1200,8 @@ func DefaultStorageConfig() *StorageConfig {
 	return &StorageConfig{
 		DiscardABCIResponses: false,
 		Pruning:              DefaultPruningConfig(),
+		CompactOnPruning:     true,
+		CompactionInterval:   1000,
 	}
 }
 
