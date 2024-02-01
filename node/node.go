@@ -1422,6 +1422,11 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 	return n.consensusReactor
 }
 
+// BCReactor returns the Node's BlockchainReactor.
+func (n *Node) BCReactor() p2p.Reactor {
+	return n.bcReactor
+}
+
 // MempoolReactor returns the Node's mempool reactor.
 func (n *Node) MempoolReactor() p2p.Reactor {
 	return n.mempoolReactor
