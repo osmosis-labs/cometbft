@@ -127,6 +127,10 @@ type StoreOptions struct {
 	// Metrics defines the metrics collector to use for the state store.
 	// if none is specified then a NopMetrics collector is used.
 	Metrics *Metrics
+
+	Compact bool
+
+	CompactionInterval int64
 }
 
 var _ Store = (*dbStore)(nil)
@@ -437,7 +441,7 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 		return err
 	}
 
-	if to%1000 == 0 || pruned > 1000 {
+	if store.StoreOptions.Compact && (to%store.StoreOptions.CompactionInterval == 0 || pruned >= uint64(store.StoreOptions.CompactionInterval)) {
 		err := store.db.Compact(nil, nil)
 		if err != nil {
 			return err

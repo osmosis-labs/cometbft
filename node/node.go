@@ -212,7 +212,7 @@ func BootstrapState(ctx context.Context, config *cfg.Config, dbProvider DBProvid
 	}
 	blockStoreDB, stateDB, err := initDBs(config, dbProvider)
 
-	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(store.NopMetrics()))
+	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(store.NopMetrics()), store.WithCompaction(config.Storage.CompactOnPruning, config.Storage.CompactionInterval))
 	defer func() {
 		if derr := blockStore.Close(); derr != nil {
 			logger.Error("Failed to close blockstore", "err", derr)
@@ -233,6 +233,8 @@ func BootstrapState(ctx context.Context, config *cfg.Config, dbProvider DBProvid
 
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		Compact:              config.Storage.CompactOnPruning,
+		CompactionInterval:   config.Storage.CompactionInterval,
 	})
 
 	defer func() {
@@ -878,15 +880,15 @@ func NewNodeWithContext(ctx context.Context,
 	}
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics, bstMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
-	fmt.Println("Calling from node")
+
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		Compact:              config.Storage.CompactOnPruning,
+		CompactionInterval:   config.Storage.CompactionInterval,
 		Metrics:              smMetrics,
 	})
-	if stateStore.Metrics == nil {
-		fmt.Println("NIL METRICS 2")
-	}
-	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(bstMetrics))
+
+	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(bstMetrics), store.WithCompaction(config.Storage.CompactOnPruning, config.Storage.CompactionInterval))
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, abciMetrics)

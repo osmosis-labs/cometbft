@@ -48,7 +48,9 @@ type BlockStore struct {
 	base   int64
 	height int64
 
-	blocksDeleted int64
+	compact            bool
+	compactionInterval int64
+	blocksDeleted      int64
 }
 
 type BlockStoreOption func(*BlockStore)
@@ -56,6 +58,14 @@ type BlockStoreOption func(*BlockStore)
 // WithMetrics sets the metrics.
 func WithMetrics(metrics *Metrics) BlockStoreOption {
 	return func(bs *BlockStore) { bs.metrics = metrics }
+}
+
+// WithCompaction sets the compaciton parameters.
+func WithCompaction(compact bool, compactionInterval int64) BlockStoreOption {
+	return func(bs *BlockStore) {
+		bs.compact = compact
+		bs.compactionInterval = compactionInterval
+	}
 }
 
 // NewBlockStore returns a new BlockStore with the given DB,
@@ -391,7 +401,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 	bs.blocksDeleted += int64(pruned)
 
-	if bs.blocksDeleted >= 1000 {
+	if bs.compact && bs.blocksDeleted >= bs.compactionInterval {
 		err = bs.db.Compact(nil, nil)
 		bs.blocksDeleted = 0
 	}
