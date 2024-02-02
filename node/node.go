@@ -229,8 +229,6 @@ func BootstrapState(ctx context.Context, config *cfg.Config, dbProvider DBProvid
 		return fmt.Errorf("blockstore not empty, trying to initialize non empty state")
 	}
 
-	fmt.Println("calling fro mbootstrap")
-
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
 		Compact:              config.Storage.CompactOnPruning,
@@ -937,11 +935,6 @@ func NewNodeWithContext(ctx context.Context,
 	// and replays any blocks as necessary to sync CometBFT with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
-		if stateStore.Metrics == nil {
-			fmt.Println("NIL METRICS 3")
-		} else {
-			fmt.Println("NOT METRICS 3")
-		}
 		if err := doHandshake(ctx, stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
 			return nil, err
 		}
@@ -1603,7 +1596,6 @@ func LoadStateFromDBOrGenesisDocProvider(
 			return sm.State{}, nil, err
 		}
 	}
-	fmt.Println("Call from load genesis")
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: false,
 	})
