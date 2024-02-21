@@ -41,8 +41,10 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
-var lastABCIResponseKey = []byte("lastABCIResponseKey")
-var offlineStateSyncHeight = []byte("offlineStateSyncHeightKey")
+var (
+	lastABCIResponseKey    = []byte("lastABCIResponseKey") // DEPRECATED
+	offlineStateSyncHeight = []byte("offlineStateSyncHeightKey")
+)
 
 //go:generate ../scripts/mockery_generate.sh Store
 
@@ -418,28 +420,36 @@ func (store dbStore) LoadABCIResponses(height int64) (*cmtstate.ABCIResponses, e
 // This method is used for recovering in the case that we called the Commit ABCI
 // method on the application but crashed before persisting the results.
 func (store dbStore) LoadLastABCIResponse(height int64) (*cmtstate.ABCIResponses, error) {
-	bz, err := store.db.Get(lastABCIResponseKey)
+	buf, err := store.db.Get(calcABCIResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
-
-	if len(bz) == 0 {
-		return nil, errors.New("no last ABCI response has been persisted")
+	if len(buf) == 0 {
+		// DEPRECATED lastABCIResponseKey
+		// It is possible if this is called directly after an upgrade that
+		// `lastABCIResponseKey` contains the last ABCI responses.
+		bz, err := store.db.Get(lastABCIResponseKey)
+		if err == nil && len(bz) > 0 {
+			info := new(cmtstate.ABCIResponsesInfo)
+			err = info.Unmarshal(bz)
+			if err != nil {
+				cmtos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has changed: %v\n`, err))
+			}
+			// Here we validate the result by comparing its height to the expected height.
+			if height != info.GetHeight() {
+				return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
+			}
+			return info.AbciResponses, nil
+		}
+		// END OF DEPRECATED lastABCIResponseKey
+		return nil, fmt.Errorf("expected last ABCI responses at height %d, but none are found", height)
 	}
-
-	abciResponse := new(cmtstate.ABCIResponsesInfo)
-	err = abciResponse.Unmarshal(bz)
+	resp := new(cmtstate.ABCIResponses)
+	err = resp.Unmarshal(buf)
 	if err != nil {
-		cmtos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
-			changed: %v\n`, err))
+		cmtos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has changed: %v\n`, err))
 	}
-
-	// Here we validate the result by comparing its height to the expected height.
-	if height != abciResponse.GetHeight() {
-		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
-	}
-
-	return abciResponse.AbciResponses, nil
+	return resp, nil
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -458,30 +468,24 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *cmtstate.ABC
 	}
 	abciResponses.DeliverTxs = dtxs
 
-	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
-	// query or to reindex an event using the command line.
-	if !store.DiscardABCIResponses {
-		bz, err := abciResponses.Marshal()
-		if err != nil {
-			return err
-		}
-		if err := store.db.Set(calcABCIResponsesKey(height), bz); err != nil {
-			return err
-		}
-	}
-
-	// We always save the last ABCI response for crash recovery.
-	// This overwrites the previous saved ABCI Response.
-	response := &cmtstate.ABCIResponsesInfo{
-		AbciResponses: abciResponses,
-		Height:        height,
-	}
-	bz, err := response.Marshal()
+	bz, err := abciResponses.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return store.db.SetSync(lastABCIResponseKey, bz)
+	// Save the ABCI response.
+	//
+	// We always save the last ABCI response for crash recovery.
+	// If `store.DiscardABCIResponses` is true, then we delete the previous ABCI response.
+	if store.DiscardABCIResponses && height > 1 {
+		if err := store.db.Delete(calcABCIResponsesKey(height - 1)); err != nil {
+			return err
+		}
+	}
+	if err := store.db.SetSync(calcABCIResponsesKey(height), bz); err != nil {
+		return err
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
