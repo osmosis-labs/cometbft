@@ -31,7 +31,7 @@ const (
 	requestIntervalMS         = 2
 	maxTotalRequesters        = 600
 	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 20
+	maxPendingRequestsPerPeer = 200
 	requestRetrySeconds       = 30
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
@@ -40,10 +40,10 @@ const (
 	//
 	// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
 	// sending data across atlantic ~ 7.5 KB/s.
-	minRecvRate = 7680
+	minRecvRate = 768000 // 768 KB/s
 
 	// Maximum difference between current and new block's height.
-	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
+	maxDiffBetweenCurrentAndReceivedBlockHeight = int64(200) // Example: 200 blocks
 )
 
 var peerTimeout = 15 * time.Second // not const so we can override with tests
@@ -249,6 +249,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
+		// Log that a block was received that we did not expect
 		pool.Logger.Info(
 			"peer sent us a block we didn't expect",
 			"peer",
@@ -257,12 +258,23 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			pool.height,
 			"blockHeight",
 			block.Height)
+
+		// Calculate the absolute difference in height
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
 		}
-		if diff > maxDiffBetweenCurrentAndReceivedBlockHeight {
+
+		// Allow sync from more than one block ahead by increasing the height difference threshold
+		// You may want to define a new constant for this threshold
+		newMaxDiff := maxDiffBetweenCurrentAndReceivedBlockHeight * 2 // Example: double the allowed height difference
+
+		// Check if the block height difference is too large
+		if diff > newMaxDiff {
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
+		} else {
+			// If the block is within the acceptable range, create a requester for this block height
+			pool.makeRequesterForHeight(block.Height)
 		}
 		return
 	}
@@ -276,6 +288,19 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 	} else {
 		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
 		pool.sendError(errors.New("invalid peer"), peerID)
+	}
+}
+
+// makeRequesterForHeight creates a requester for a specific block height if it does not exist
+func (pool *BlockPool) makeRequesterForHeight(height int64) {
+	if _, ok := pool.requesters[height]; !ok {
+		request := newBPRequester(pool, height)
+		pool.requesters[height] = request
+		atomic.AddInt32(&pool.numPending, 1)
+		err := request.Start()
+		if err != nil {
+			request.Logger.Error("Error starting requester", "err", err)
+		}
 	}
 }
 
