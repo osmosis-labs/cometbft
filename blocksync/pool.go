@@ -370,32 +370,40 @@ func (pool *BlockPool) SetPeerRange(peerID p2p.ID, base int64, height int64) {
 // RemovePeer removes the peer with peerID from the pool. If there's no peer
 // with peerID, function is a no-op.
 func (pool *BlockPool) removePeer(peerID p2p.ID) {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Track heights that need request reassignment.
+	heightsToReassign := make(map[int64]struct{})
+
+	// Remove the peer from the requesters.
 	for height, requesters := range pool.requesters {
 		for i, requester := range requesters {
 			if requester.getPeerID() == peerID {
-				requester.redo(peerID)
-				// Remove the requester from the slice.
+				requester.stop() // Stop the requester and implicitly reassign the request.
 				pool.requesters[height] = append(requesters[:i], requesters[i+1:]...)
-				// If there are no more requesters for this height, delete the height from the map.
 				if len(pool.requesters[height]) == 0 {
 					delete(pool.requesters, height)
 				}
-				// Since we modified the slice during iteration, we should break out of the loop.
-				break
+				// Mark the height for reassignment.
+				heightsToReassign[height] = struct{}{}
+				break // Break since we only handle one requester per height per peer.
 			}
 		}
 	}
 
-	peer, ok := pool.peers[peerID]
-	if ok {
+	// Reassign requests for all heights associated with this peer.
+	for height := range heightsToReassign {
+		pool.makeRequesterForHeight(height)
+	}
+
+	// Remove the peer from the peers map.
+	if peer, ok := pool.peers[peerID]; ok {
 		if peer.timeout != nil {
 			peer.timeout.Stop()
 		}
-
 		delete(pool.peers, peerID)
-
-		// Find a new peer with the biggest height and update maxPeerHeight if the
-		// peer's height was the biggest.
+		// Update maxPeerHeight if necessary.
 		if peer.height == pool.maxPeerHeight {
 			pool.updateMaxPeerHeight()
 		}
@@ -736,4 +744,29 @@ func (bpr *bpRequester) stop() {
 	if err := bpr.Stop(); err != nil {
 		bpr.Logger.Error("Error stopping requester", "err", err)
 	}
+
+	// Reassign the request to another peer.
+	bpr.pool.reassignRequest(bpr.height)
+}
+
+func (pool *BlockPool) reassignRequest(height int64) {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Remove the stopped requester from the slice.
+	requesters := pool.requesters[height]
+	for i, requester := range requesters {
+		if requester.isStopped {
+			pool.requesters[height] = append(requesters[:i], requesters[i+1:]...)
+			break
+		}
+	}
+
+	// If there are no more requesters for this height, delete the height from the map.
+	if len(pool.requesters[height]) == 0 {
+		delete(pool.requesters, height)
+	}
+
+	// Create a new requester for this height to replace the stopped one.
+	pool.makeRequesterForHeight(height)
 }
