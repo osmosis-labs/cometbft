@@ -40,7 +40,7 @@ const (
 	//
 	// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
 	// sending data across atlantic ~ 7.5 KB/s.
-	minRecvRate = 7680
+	minRecvRate = 768000 // 750 KB/s
 
 	// Maximum difference between current and new block's height.
 	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
