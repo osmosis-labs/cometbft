@@ -230,7 +230,8 @@ func (bcR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	case *bcproto.BlockResponse:
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
-			bcR.Logger.Error("Block content is invalid", "err", err)
+			bcR.Logger.Error("Peer sent us invalid block", "peer", e.Src, "msg", e.Message, "err", err)
+			bcR.Switch.StopPeerForError(e.Src, err)
 			return
 		}
 		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
@@ -419,7 +420,7 @@ FOR_LOOP:
 
 			// TODO: same thing for app - but we would need a way to
 			// get the hash without persisting the state
-			state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+			state, err = bcR.blockExec.ApplyVerifiedBlock(state, firstID, first)
 			if err != nil {
 				// TODO This is bad, are we zombie?
 				panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

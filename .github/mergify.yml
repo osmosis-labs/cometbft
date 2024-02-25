@@ -1,13 +1,19 @@
+defaults:
+  actions:
+    backport:
+      assignees:
+        - "{{ author }}"
+
 queue_rules:
   - name: default
     conditions:
-      - base=main
-      - label=S:automerge
+      - "#approved-reviews-by>=1"
 
 pull_request_rules:
   - name: Automerge to main
     conditions:
-      - base=main
+      - "#approved-reviews-by>=1"
+      - base=osmo/v0.37.4
       - label=S:automerge
     actions:
       queue:
@@ -15,13 +21,12 @@ pull_request_rules:
         name: default
         commit_message_template: |
           {{ title }} (#{{ number }})
-
           {{ body }}
-  - name: backport patches to v0.34.x branch
+  - name: backport patches to v23 branch
     conditions:
-      - base=main
-      - label=S:backport-to-v0.34.x
+      - base=osmo/v0.37.4
+      - label=S:backport/v23
     actions:
       backport:
         branches:
-          - v0.34.x
+          - osmo-v23/v0.37.4
