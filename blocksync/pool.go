@@ -3,7 +3,7 @@ package blocksync
 import (
 	"errors"
 	"fmt"
-	"math"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -29,9 +29,9 @@ eg, L = latency = 0.1s
 
 const (
 	requestIntervalMS         = 2
-	maxTotalRequesters        = 600
+	maxTotalRequesters        = 1000
 	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 20
+	maxPendingRequestsPerPeer = 200
 	requestRetrySeconds       = 30
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
@@ -40,13 +40,14 @@ const (
 	//
 	// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
 	// sending data across atlantic ~ 7.5 KB/s.
-	minRecvRate = 7680
+	minRecvRate = 76800 // 75 KB/s
 
 	// Maximum difference between current and new block's height.
-	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
+	maxDiffBetweenCurrentAndReceivedBlockHeight = 1000
+	maxBlocksAhead                              = 200
 )
 
-var peerTimeout = 15 * time.Second // not const so we can override with tests
+var peerTimeout = 2 * time.Second // not const so we can override with tests
 
 /*
 	Peers self report their heights when we join the block pool.
@@ -112,18 +113,9 @@ func (pool *BlockPool) makeRequestersRoutine() {
 		}
 
 		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		default:
+		if numPending >= maxPendingRequests || lenRequesters >= maxTotalRequesters {
+			pool.sleepAndRemoveTimedoutPeers()
+		} else {
 			// request for more blocks.
 			pool.makeNextRequester()
 		}
@@ -134,22 +126,10 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	for _, peer := range pool.peers {
-		if !peer.didTimeout && peer.numPending > 0 {
-			curRate := peer.recvMonitor.Status().CurRate
-			// curRate can be 0 on start
-			if curRate != 0 && curRate < minRecvRate {
-				err := errors.New("peer is not sending us data fast enough")
-				pool.sendError(err, peer.id)
-				pool.Logger.Error("SendTimeout", "peer", peer.id,
-					"reason", err,
-					"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
-					"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
-				peer.didTimeout = true
-			}
-		}
-		if peer.didTimeout {
-			pool.removePeer(peer.id)
+	for peerID, peer := range pool.peers {
+		if peer.didTimeout || (peer.numPending > 0 && peer.recvMonitor.Status().CurRate < minRecvRate) {
+			pool.Logger.Error("Removing timed out peer", "peer", peerID)
+			pool.removePeer(peerID) // Simplify by using removePeer directly.
 		}
 	}
 }
@@ -349,35 +329,12 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 	pool.maxPeerHeight = max
 }
 
-// Pick an available peer with the given height available.
-// If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
-
-	for _, peer := range pool.peers {
-		if peer.didTimeout {
-			pool.removePeer(peer.id)
-			continue
-		}
-		if peer.numPending >= maxPendingRequestsPerPeer {
-			continue
-		}
-		if height < peer.base || height > peer.height {
-			continue
-		}
-		peer.incrPending()
-		return peer
-	}
-	return nil
-}
-
 func (pool *BlockPool) makeNextRequester() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	nextHeight := pool.height + pool.requestersLen()
-	if nextHeight > pool.maxPeerHeight {
+	if nextHeight > pool.maxPeerHeight || nextHeight > pool.height+maxBlocksAhead {
 		return
 	}
 
@@ -462,26 +419,12 @@ func (peer *bpPeer) setLogger(l log.Logger) {
 	peer.logger = l
 }
 
-func (peer *bpPeer) resetMonitor() {
-	peer.recvMonitor = flow.New(time.Second, time.Second*40)
-	initialValue := float64(minRecvRate) * math.E
-	peer.recvMonitor.SetREMA(initialValue)
-}
-
 func (peer *bpPeer) resetTimeout() {
 	if peer.timeout == nil {
 		peer.timeout = time.AfterFunc(peerTimeout, peer.onTimeout)
 	} else {
 		peer.timeout.Reset(peerTimeout)
 	}
-}
-
-func (peer *bpPeer) incrPending() {
-	if peer.numPending == 0 {
-		peer.resetMonitor()
-		peer.resetTimeout()
-	}
-	peer.numPending++
 }
 
 func (peer *bpPeer) decrPending(recvSize int) {
@@ -566,19 +509,6 @@ func (bpr *bpRequester) getPeerID() p2p.ID {
 	return bpr.peerID
 }
 
-// This is called from the requestRoutine, upon redo().
-func (bpr *bpRequester) reset() {
-	bpr.mtx.Lock()
-	defer bpr.mtx.Unlock()
-
-	if bpr.block != nil {
-		atomic.AddInt32(&bpr.pool.numPending, 1)
-	}
-
-	bpr.peerID = ""
-	bpr.block = nil
-}
-
 // Tells bpRequester to pick another peer and try again.
 // NOTE: Nonblocking, and does nothing if another redo
 // was already requested.
@@ -592,59 +522,74 @@ func (bpr *bpRequester) redo(peerID p2p.ID) {
 // Responsible for making more requests as necessary
 // Returns only when a block is found (e.g. AddBlock() is called)
 func (bpr *bpRequester) requestRoutine() {
-OUTER_LOOP:
 	for {
-		// Pick a peer to send request to.
-		var peer *bpPeer
-	PICK_PEER_LOOP:
-		for {
-			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
-				return
-			}
-			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
-			if peer == nil {
-				bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
-				time.Sleep(requestIntervalMS * time.Millisecond)
-				continue PICK_PEER_LOOP
-			}
-			break PICK_PEER_LOOP
+		if !bpr.IsRunning() || !bpr.pool.IsRunning() {
+			return
 		}
-		bpr.mtx.Lock()
-		bpr.peerID = peer.id
-		bpr.mtx.Unlock()
 
-		to := time.NewTimer(requestRetrySeconds * time.Second)
-		// Send request and wait.
-		bpr.pool.sendRequest(bpr.height, peer.id)
-	WAIT_LOOP:
-		for {
-			select {
-			case <-bpr.pool.Quit():
-				if err := bpr.Stop(); err != nil {
-					bpr.Logger.Error("Error stopped requester", "err", err)
+		// Pick multiple peers and send requests concurrently.
+		peers := bpr.pool.pickNPeersForHeight(bpr.height, 3) // pick 3 peers
+		if len(peers) == 0 {
+			bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
+			time.Sleep(requestIntervalMS * time.Millisecond)
+			continue
+		}
+
+		// Create a channel to signal the arrival of a block.
+		blockArrived := make(chan struct{}, 1)
+		var wg sync.WaitGroup
+
+		for _, peer := range peers {
+			wg.Add(1)
+			go func(peer *bpPeer) {
+				defer wg.Done()
+				bpr.pool.sendRequest(bpr.height, peer.id)
+				select {
+				case <-blockArrived:
+					// If a block has arrived from another peer, stop this goroutine.
+					return
+				case <-time.After(requestRetrySeconds * time.Second):
+					// Timeout for this peer; consider sending a new request or logging an error.
+					bpr.Logger.Debug("Request to peer timed out", "peer", peer.id, "height", bpr.height)
 				}
-				return
-			case <-bpr.Quit():
-				return
-			case <-to.C:
-				bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerID)
-				// Simulate a redo
-				bpr.reset()
-				continue OUTER_LOOP
-			case peerID := <-bpr.redoCh:
-				if peerID == bpr.peerID {
-					bpr.reset()
-					continue OUTER_LOOP
-				} else {
-					continue WAIT_LOOP
-				}
-			case <-bpr.gotBlockCh:
-				// We got a block!
-				// Continue the for-loop and wait til Quit.
-				continue WAIT_LOOP
+			}(peer)
+		}
+
+		select {
+		case <-bpr.pool.Quit():
+			close(blockArrived)
+			wg.Wait() // Wait for all request goroutines to finish.
+			return
+		case <-bpr.Quit():
+			close(blockArrived)
+			wg.Wait() // Wait for all request goroutines to finish.
+			return
+		case <-bpr.gotBlockCh:
+			// We got a block! Signal all goroutines to stop.
+			close(blockArrived)
+			wg.Wait() // Wait for all request goroutines to finish.
+			return
+		}
+	}
+}
+
+func (pool *BlockPool) pickNPeersForHeight(height int64, n int) []*bpPeer {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	var peers []*bpPeer
+	for _, peer := range pool.peers {
+		if peer.didTimeout || peer.numPending >= maxPendingRequestsPerPeer {
+			continue
+		}
+		if height >= peer.base && height <= peer.height {
+			peers = append(peers, peer)
+			if len(peers) == n {
+				break
 			}
 		}
 	}
+	return peers
 }
 
 // BlockRequest stores a block request identified by the block Height and the PeerID responsible for
@@ -652,4 +597,11 @@ OUTER_LOOP:
 type BlockRequest struct {
 	Height int64
 	PeerID p2p.ID
+}
+
+// sleepAndRemoveTimedoutPeers encapsulates the common pattern of sleeping
+// for a specified interval and then removing timed-out peers.
+func (pool *BlockPool) sleepAndRemoveTimedoutPeers() {
+	time.Sleep(requestIntervalMS * time.Millisecond)
+	pool.removeTimedoutPeers()
 }
