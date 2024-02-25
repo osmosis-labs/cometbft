@@ -227,15 +227,15 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	assert.EqualValues(t, 10, pool.MaxPeerHeight())
 
 	// remove not-existing peer
-	assert.NotPanics(t, func() { pool.RemovePeer(p2p.ID("Superman")) })
+	assert.NotPanics(t, func() { pool.removePeer(p2p.ID("Superman")) })
 
 	// remove peer with biggest height
-	pool.RemovePeer(p2p.ID("10"))
+	pool.removePeer(p2p.ID("10"))
 	assert.EqualValues(t, 9, pool.MaxPeerHeight())
 
 	// remove all peers
 	for peerID := range peers {
-		pool.RemovePeer(peerID)
+		pool.removePeer(peerID)
 	}
 
 	assert.EqualValues(t, 0, pool.MaxPeerHeight())

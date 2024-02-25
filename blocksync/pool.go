@@ -44,6 +44,8 @@ const (
 
 	// Maximum difference between current and new block's height.
 	maxDiffBetweenCurrentAndReceivedBlockHeight = int64(200) // Example: 200 blocks
+	numPeersToRequestFrom                       = 3          // Number of peers to request the same block from
+	maxAhead                                    = 200
 )
 
 var peerTimeout = 15 * time.Second // not const so we can override with tests
@@ -66,7 +68,7 @@ type BlockPool struct {
 
 	mtx cmtsync.Mutex
 	// block requests
-	requesters map[int64]*bpRequester
+	requesters map[int64][]*bpRequester
 	height     int64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.ID]*bpPeer
@@ -83,12 +85,10 @@ type BlockPool struct {
 // requests and errors will be sent to requestsCh and errorsCh accordingly.
 func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
 	bp := &BlockPool{
-		peers: make(map[p2p.ID]*bpPeer),
-
-		requesters: make(map[int64]*bpRequester),
+		peers:      make(map[p2p.ID]*bpPeer),
+		requesters: make(map[int64][]*bpRequester), // Updated to hold a slice of requesters
 		height:     start,
 		numPending: 0,
-
 		requestsCh: requestsCh,
 		errorsCh:   errorsCh,
 	}
@@ -194,13 +194,23 @@ func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block)
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	if r := pool.requesters[pool.height]; r != nil {
-		first = r.getBlock()
+	if requestersAtHeight := pool.requesters[pool.height]; requestersAtHeight != nil {
+		for _, requester := range requestersAtHeight {
+			if block := requester.getBlock(); block != nil {
+				first = block
+				break // We only need the first valid block.
+			}
+		}
 	}
-	if r := pool.requesters[pool.height+1]; r != nil {
-		second = r.getBlock()
+	if requestersAtNextHeight := pool.requesters[pool.height+1]; requestersAtNextHeight != nil {
+		for _, requester := range requestersAtNextHeight {
+			if block := requester.getBlock(); block != nil {
+				second = block
+				break // We only need the first valid block.
+			}
+		}
 	}
-	return
+	return first, second
 }
 
 // PopRequest pops the first block at pool.height.
@@ -209,14 +219,12 @@ func (pool *BlockPool) PopRequest() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	if r := pool.requesters[pool.height]; r != nil {
-		/*  The block can disappear at any time, due to removePeer().
-		if r := pool.requesters[pool.height]; r == nil || r.block == nil {
-			PanicSanity("PopRequest() requires a valid block")
-		}
-		*/
-		if err := r.Stop(); err != nil {
-			pool.Logger.Error("Error stopping requester", "err", err)
+	requestersAtHeight := pool.requesters[pool.height]
+	if len(requestersAtHeight) > 0 {
+		for _, requester := range requestersAtHeight {
+			if err := requester.Stop(); err != nil {
+				pool.Logger.Error("Error stopping requester", "err", err)
+			}
 		}
 		delete(pool.requesters, pool.height)
 		pool.height++
@@ -232,12 +240,21 @@ func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	request := pool.requesters[height]
-	peerID := request.getPeerID()
-	if peerID != p2p.ID("") {
-		// RemovePeer will redo all requesters associated with this peer.
-		pool.removePeer(peerID)
+	requestersAtHeight := pool.requesters[height]
+	var peerID p2p.ID
+
+	// Iterate over all requesters for the given height.
+	for _, requester := range requestersAtHeight {
+		if requester.getPeerID() != p2p.ID("") {
+			peerID = requester.getPeerID()
+			// RemovePeer will redo all requesters associated with this peer.
+			pool.removePeer(peerID)
+			// Assuming we only need to redo once per peer, break after handling the first.
+			break
+		}
 	}
+
+	// If no requester had a peerID, return an empty p2p.ID.
 	return peerID
 }
 
@@ -247,8 +264,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	requester := pool.requesters[block.Height]
-	if requester == nil {
+	requesters := pool.requesters[block.Height]
+	if requesters == nil {
 		// Log that a block was received that we did not expect
 		pool.Logger.Info(
 			"peer sent us a block we didn't expect",
@@ -275,29 +292,46 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			fmt.Println("diff", diff, "newMaxDiff", newMaxDiff)
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
 		} else {
-			// If the block is within the acceptable range, create a requester for this block height
-			pool.makeRequesterForHeight(block.Height)
+			// If the block is within the acceptable range, create a requester for this block height.  Requests from 3 peers.
+			for i := 0; i < numPeersToRequestFrom; i++ {
+				pool.makeRequesterForHeight(block.Height)
+			}
 		}
+
 		return
 	}
 
-	if requester.setBlock(block, peerID) {
-		atomic.AddInt32(&pool.numPending, -1)
-		peer := pool.peers[peerID]
-		if peer != nil {
-			peer.decrPending(blockSize)
+	// Iterate over requesters and accept the first block that arrives.
+	for _, requester := range requesters {
+		if requester.setBlock(block, peerID) {
+			// Stop all other requesters for this height.
+			for _, otherRequester := range requesters {
+				if otherRequester != requester {
+					otherRequester.stop()
+				}
+			}
+			// Now remove the slice of requesters for this height.
+			delete(pool.requesters, block.Height)
+			break
 		}
-	} else {
-		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
-		pool.sendError(errors.New("invalid peer"), peerID)
 	}
 }
 
 // makeRequesterForHeight creates a requester for a specific block height if it does not exist
+// and if there are not already numPeersToRequestFrom requesters for this height.
 func (pool *BlockPool) makeRequesterForHeight(height int64) {
-	if _, ok := pool.requesters[height]; !ok {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Check if we already have enough requesters for this height.
+	if len(pool.requesters[height]) >= numPeersToRequestFrom {
+		return
+	}
+
+	// Create new requesters up to numPeersToRequestFrom.
+	for i := len(pool.requesters[height]); i < numPeersToRequestFrom; i++ {
 		request := newBPRequester(pool, height)
-		pool.requesters[height] = request
+		pool.requesters[height] = append(pool.requesters[height], request)
 		atomic.AddInt32(&pool.numPending, 1)
 		err := request.Start()
 		if err != nil {
@@ -335,17 +369,20 @@ func (pool *BlockPool) SetPeerRange(peerID p2p.ID, base int64, height int64) {
 
 // RemovePeer removes the peer with peerID from the pool. If there's no peer
 // with peerID, function is a no-op.
-func (pool *BlockPool) RemovePeer(peerID p2p.ID) {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
-
-	pool.removePeer(peerID)
-}
-
 func (pool *BlockPool) removePeer(peerID p2p.ID) {
-	for _, requester := range pool.requesters {
-		if requester.getPeerID() == peerID {
-			requester.redo(peerID)
+	for height, requesters := range pool.requesters {
+		for i, requester := range requesters {
+			if requester.getPeerID() == peerID {
+				requester.redo(peerID)
+				// Remove the requester from the slice.
+				pool.requesters[height] = append(requesters[:i], requesters[i+1:]...)
+				// If there are no more requesters for this height, delete the height from the map.
+				if len(pool.requesters[height]) == 0 {
+					delete(pool.requesters, height)
+				}
+				// Since we modified the slice during iteration, we should break out of the loop.
+				break
+			}
 		}
 	}
 
@@ -403,14 +440,19 @@ func (pool *BlockPool) makeNextRequester() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	nextHeight := pool.height + pool.requestersLen()
+	nextHeight := pool.height + int64(len(pool.requesters))
 	if nextHeight > pool.maxPeerHeight {
 		return
 	}
 
-	request := newBPRequester(pool, nextHeight)
+	// Check if we already have enough requesters for this height.
+	if len(pool.requesters[nextHeight]) >= numPeersToRequestFrom {
+		return
+	}
 
-	pool.requesters[nextHeight] = request
+	// Create new requester and add it to the slice for the nextHeight.
+	request := newBPRequester(pool, nextHeight)
+	pool.requesters[nextHeight] = append(pool.requesters[nextHeight], request)
 	atomic.AddInt32(&pool.numPending, 1)
 
 	err := request.Start()
@@ -445,13 +487,16 @@ func (pool *BlockPool) debug() string {
 	defer pool.mtx.Unlock()
 
 	str := ""
-	nextHeight := pool.height + pool.requestersLen()
+	nextHeight := pool.height + int64(len(pool.requesters))
 	for h := pool.height; h < nextHeight; h++ {
-		if pool.requesters[h] == nil {
+		requestersForHeight := pool.requesters[h]
+		if requestersForHeight == nil {
 			str += fmt.Sprintf("H(%v):X ", h)
 		} else {
 			str += fmt.Sprintf("H(%v):", h)
-			str += fmt.Sprintf("B?(%v) ", pool.requesters[h].block != nil)
+			for _, requester := range requestersForHeight {
+				str += fmt.Sprintf("B?(%v) ", requester.getBlock() != nil)
+			}
 		}
 	}
 	return str
@@ -539,6 +584,7 @@ type bpRequester struct {
 	height     int64
 	gotBlockCh chan struct{}
 	redoCh     chan p2p.ID // redo may send multitime, add peerId to identify repeat
+	isStopped  bool
 
 	mtx    cmtsync.Mutex
 	peerID p2p.ID
@@ -679,4 +725,15 @@ OUTER_LOOP:
 type BlockRequest struct {
 	Height int64
 	PeerID p2p.ID
+}
+
+func (bpr *bpRequester) stop() {
+	if bpr.isStopped {
+		return
+	}
+	bpr.isStopped = true
+	close(bpr.gotBlockCh)
+	if err := bpr.Stop(); err != nil {
+		bpr.Logger.Error("Error stopping requester", "err", err)
+	}
 }

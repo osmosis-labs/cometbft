@@ -185,7 +185,7 @@ func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	bcR.pool.RemovePeer(peer.ID())
+	bcR.pool.removePeer(peer.ID())
 }
 
 // respondToPeer loads a block and sends it to the requesting peer,
