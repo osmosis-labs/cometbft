@@ -427,21 +427,31 @@ func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
+	var bestPeer *bpPeer
+	var bestThroughput int64
+
 	for _, peer := range pool.peers {
-		if peer.didTimeout {
-			pool.removePeer(peer.id)
-			continue
-		}
-		if peer.numPending >= maxPendingRequestsPerPeer {
+		if peer.didTimeout || peer.numPending >= maxPendingRequestsPerPeer {
 			continue
 		}
 		if height < peer.base || height > peer.height {
 			continue
 		}
-		peer.incrPending()
-		return peer
+		// Check if recvMonitor is not nil before accessing it
+		if peer.recvMonitor != nil {
+			throughput := peer.recvMonitor.Status().CurRate
+			if bestPeer == nil || throughput > bestThroughput {
+				bestPeer = peer
+				bestThroughput = throughput
+			}
+		}
 	}
-	return nil
+
+	if bestPeer != nil {
+		bestPeer.incrPending()
+	}
+
+	return bestPeer
 }
 
 func (pool *BlockPool) makeNextRequester() {
@@ -528,12 +538,13 @@ type bpPeer struct {
 
 func newBPPeer(pool *BlockPool, peerID p2p.ID, base int64, height int64) *bpPeer {
 	peer := &bpPeer{
-		pool:       pool,
-		id:         peerID,
-		base:       base,
-		height:     height,
-		numPending: 0,
-		logger:     log.NewNopLogger(),
+		pool:        pool,
+		id:          peerID,
+		base:        base,
+		height:      height,
+		numPending:  0,
+		logger:      log.NewNopLogger(),
+		recvMonitor: flow.New(time.Second, time.Second*40), // Ensure recvMonitor is initialized
 	}
 	return peer
 }
