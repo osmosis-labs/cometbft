@@ -81,7 +81,7 @@ func NewReactorWithOfflineStateSync(state sm.State, blockExec *sm.BlockExecutor,
 	}
 	requestsCh := make(chan BlockRequest, maxTotalRequesters)
 
-	const capacity = 2000                          // must be bigger than peers count
+	const capacity = 1000                          // must be bigger than peers count
 	errorsCh := make(chan peerError, capacity)     // so we don't block in #Receive#pool.AddBlock
 	appHashErrorsCh := make(chan p2p.AppHashError) // create an unbuffered channel to stream appHash errors
 
