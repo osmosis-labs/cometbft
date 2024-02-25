@@ -351,10 +351,11 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 
 // Pick an available peer with the given height available.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeers(height int64) []*bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
+	var peers []*bpPeer
 	for _, peer := range pool.peers {
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
@@ -367,9 +368,9 @@ func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
 			continue
 		}
 		peer.incrPending()
-		return peer
+		peers = append(peers, peer)
 	}
-	return nil
+	return peers
 }
 
 func (pool *BlockPool) makeNextRequester() {
@@ -594,28 +595,30 @@ func (bpr *bpRequester) redo(peerID p2p.ID) {
 func (bpr *bpRequester) requestRoutine() {
 OUTER_LOOP:
 	for {
-		// Pick a peer to send request to.
-		var peer *bpPeer
-	PICK_PEER_LOOP:
+		// Pick peers to send request to.
+		var peers []*bpPeer
+	PICK_PEERS_LOOP:
 		for {
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
 				return
 			}
-			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
-			if peer == nil {
+			peers = bpr.pool.pickIncrAvailablePeers(bpr.height) // This function should return multiple peers
+			if len(peers) == 0 {
 				bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
-				continue PICK_PEER_LOOP
+				continue PICK_PEERS_LOOP
 			}
-			break PICK_PEER_LOOP
+			break PICK_PEERS_LOOP
 		}
 		bpr.mtx.Lock()
-		bpr.peerID = peer.id
+		for _, peer := range peers {
+			bpr.peerID = peer.id
+			// Send request and wait.
+			bpr.pool.sendRequest(bpr.height, peer.id)
+		}
 		bpr.mtx.Unlock()
 
 		to := time.NewTimer(requestRetrySeconds * time.Second)
-		// Send request and wait.
-		bpr.pool.sendRequest(bpr.height, peer.id)
 	WAIT_LOOP:
 		for {
 			select {
