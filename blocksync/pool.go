@@ -79,18 +79,23 @@ type BlockPool struct {
 
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
+
+	lastBlockTime time.Time
+	blockCount    int64
 }
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
 // requests and errors will be sent to requestsCh and errorsCh accordingly.
 func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
 	bp := &BlockPool{
-		peers:      make(map[p2p.ID]*bpPeer),
-		requesters: make(map[int64][]*bpRequester), // Updated to hold a slice of requesters
-		height:     start,
-		numPending: 0,
-		requestsCh: requestsCh,
-		errorsCh:   errorsCh,
+		peers:         make(map[p2p.ID]*bpPeer),
+		requesters:    make(map[int64][]*bpRequester), // Updated to hold a slice of requesters
+		height:        start,
+		numPending:    0,
+		requestsCh:    requestsCh,
+		errorsCh:      errorsCh,
+		lastBlockTime: time.Now(),
+		blockCount:    0,
 	}
 	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
@@ -261,6 +266,25 @@ func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
 // TODO: ensure that blocks come in order for each peer.
 func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) {
+
+	pool.mtx.Lock()
+	// Increment the block count since a new block has been received
+	pool.blockCount++
+	pool.mtx.Unlock()
+
+	// Calculate the blocks per second
+	now := time.Now()
+	elapsed := now.Sub(pool.lastBlockTime).Seconds()
+	var blocksPerSecond float64
+	if elapsed > 0 {
+		blocksPerSecond = float64(pool.blockCount) / elapsed
+	}
+
+	// Log the blocks per second in red text
+	redStart := "\033[31m"
+	redEnd := "\033[39m"
+	fmt.Printf("%sBlocks per second: %f%s\n", redStart, blocksPerSecond, redEnd)
+
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
