@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cmtmath "github.com/cometbft/cometbft/libs/math"
-	tmmath "github.com/cometbft/cometbft/libs/math"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 )
 
@@ -22,7 +21,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 		blockID    = makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 		chainID    = "Lalande21185"
-		trustLevel = tmmath.Fraction{Numerator: 2, Denominator: 3}
+		trustLevel = cmtmath.Fraction{Numerator: 2, Denominator: 3}
 	)
 
 	testCases := []struct {
@@ -222,7 +221,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelSignedI
 	vote.Signature = v.Signature
 	commit.Signatures[2] = vote.CommitSig()
 
-	err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
+	err = valSet.VerifyCommitLightTrusting(chainID, commit, cmtmath.Fraction{Numerator: 1, Denominator: 3})
 	assert.NoError(t, err)
 	err = valSet.VerifyCommitLightTrustingAllSignatures(
 		chainID,
@@ -264,7 +263,7 @@ func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 
 	for _, tc := range testCases {
 		err = tc.valSet.VerifyCommitLightTrusting("test_chain_id", commit,
-			tmmath.Fraction{Numerator: 1, Denominator: 3})
+			cmtmath.Fraction{Numerator: 1, Denominator: 3})
 		if tc.err {
 			assert.Error(t, err)
 		} else {
@@ -282,7 +281,7 @@ func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
 	require.NoError(t, err)
 
 	err = valSet.VerifyCommitLightTrusting("test_chain_id", commit,
-		tmmath.Fraction{Numerator: 25, Denominator: 55})
+		cmtmath.Fraction{Numerator: 25, Denominator: 55})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "int64 overflow")
 	}
