@@ -124,13 +124,36 @@ func (pool *BlockPool) makeRequestersRoutine() {
 
 func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	peersCopy := make(map[p2p.ID]*bpPeer, len(pool.peers))
+	for id, peer := range pool.peers {
+		peersCopy[id] = peer
+	}
+	pool.mtx.Unlock()
 
-	for peerID, peer := range pool.peers {
-		if peer.didTimeout || (peer.numPending > 0 && peer.recvMonitor.Status().CurRate < minRecvRate) {
-			pool.Logger.Error("Removing timed out peer", "peer", peerID)
-			pool.removePeer(peerID) // Simplify by using removePeer directly.
-		}
+	removeCh := make(chan p2p.ID, len(peersCopy)) // Channel to collect peers to remove
+
+	var wg sync.WaitGroup
+	for peerID, peer := range peersCopy {
+		wg.Add(1)
+		go func(peerID p2p.ID, peer *bpPeer) {
+			defer wg.Done()
+			if peer.didTimeout || (peer.numPending > 0 && peer.recvMonitor.Status().CurRate < minRecvRate) {
+				pool.Logger.Error("Removing timed out peer", "peer", peerID)
+				removeCh <- peerID // Send peerID to be removed
+			}
+		}(peerID, peer)
+	}
+
+	go func() {
+		wg.Wait()
+		close(removeCh) // Close channel once all goroutines are done
+	}()
+
+	// Remove peers based on IDs received from removeCh
+	for id := range removeCh {
+		pool.mtx.Lock()
+		pool.removePeer(id) // Perform removal within the lock
+		pool.mtx.Unlock()
 	}
 }
 
