@@ -263,6 +263,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
+			fmt.Println("diff", diff)
 		}
 
 		// Allow sync from more than one block ahead by increasing the height difference threshold
@@ -271,6 +272,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 		// Check if the block height difference is too large
 		if diff > newMaxDiff {
+			fmt.Println("diff", diff, "newMaxDiff", newMaxDiff)
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
 		} else {
 			// If the block is within the acceptable range, create a requester for this block height
