@@ -425,23 +425,6 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*cmtstate.ABCIResponses
 		return nil, err
 	}
 	if len(buf) == 0 {
-		// DEPRECATED lastABCIResponseKey
-		// It is possible if this is called directly after an upgrade that
-		// `lastABCIResponseKey` contains the last ABCI responses.
-		bz, err := store.db.Get(lastABCIResponseKey)
-		if err == nil && len(bz) > 0 {
-			info := new(cmtstate.ABCIResponsesInfo)
-			err = info.Unmarshal(bz)
-			if err != nil {
-				cmtos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has changed: %v\n`, err))
-			}
-			// Here we validate the result by comparing its height to the expected height.
-			if height != info.GetHeight() {
-				return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
-			}
-			return info.AbciResponses, nil
-		}
-		// END OF DEPRECATED lastABCIResponseKey
 		return nil, fmt.Errorf("expected last ABCI responses at height %d, but none are found", height)
 	}
 	resp := new(cmtstate.ABCIResponses)
