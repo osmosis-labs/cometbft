@@ -229,15 +229,13 @@ func (bcR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		bcR.respondToPeer(msg, e.Src)
 	case *bcproto.BlockResponse:
 		bi, err := types.BlockFromProto(msg.Block)
+		fmt.Println("got a block resp ", bi.Height)
 		if err != nil {
 			bcR.Logger.Error("Peer sent us invalid block", "peer", e.Src, "msg", e.Message, "err", err)
 			bcR.Switch.StopPeerForError(e.Src, err)
 			return
 		}
-		if bcR.pool.height <= bi.Height {
-			fmt.Println("adding block height", bi.Height, "of size", msg.Block.Size())
-			bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
-		}
+		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
 	case *bcproto.StatusRequest:
 		// Send peer our state.
 		e.Src.TrySendEnvelope(p2p.Envelope{
@@ -288,20 +286,18 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 			case <-bcR.pool.Quit():
 				return
 			case request := <-bcR.requestsCh:
-				fmt.Println("len of peers ", len(request.PeerIDs), "IDs", request.PeerIDs)
-				for _, peerID := range request.PeerIDs {
-					peer := bcR.Switch.Peers().Get(peerID)
-					if peer == nil {
-						continue
-					}
-					fmt.Println("try send env ", request.Height)
-					queued := peer.TrySendEnvelope(p2p.Envelope{
-						ChannelID: BlocksyncChannel,
-						Message:   &bcproto.BlockRequest{Height: request.Height},
-					})
-					if !queued {
-						bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
-					}
+				//fmt.Println("len of peers ", len(request.PeerIDs), "IDs", request.PeerIDs)
+				peer := bcR.Switch.Peers().Get(request.PeerID)
+				if peer == nil {
+					continue
+				}
+				fmt.Println("try send env ", request.Height)
+				queued := peer.TrySendEnvelope(p2p.Envelope{
+					ChannelID: BlocksyncChannel,
+					Message:   &bcproto.BlockRequest{Height: request.Height},
+				})
+				if !queued {
+					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
 			case err := <-bcR.errorsCh:
 				peer := bcR.Switch.Peers().Get(err.peerID)
@@ -404,26 +400,20 @@ FOR_LOOP:
 				}
 
 				bcR.Logger.Error("Error in validation", "err", err)
-				peerIDs := bcR.pool.RedoRequest(first.Height)
-				for _, p := range peerIDs {
-					peer := bcR.Switch.Peers().Get(p)
-					if peer != nil {
-						// NOTE: we've already removed the peer's request, but we
-						// still need to clean up the rest.
-						bcR.Switch.StopPeerForError(peer, fmt.Errorf("Reactor validation error: %v", err))
-					}
+				peerID := bcR.pool.RedoRequest(first.Height)
+				peer := bcR.Switch.Peers().Get(peerID)
+				if peer != nil {
+					// NOTE: we've already removed the peer's request, but we
+					// still need to clean up the rest.
+					bcR.Switch.StopPeerForError(peer, fmt.Errorf("Reactor validation error: %v", err))
 				}
-
-				peerIDs2 := bcR.pool.RedoRequest(second.Height)
-				for _, p := range peerIDs2 {
-					peer2 := bcR.Switch.Peers().Get(p)
-					if peer2 != nil && !idExists(p, peerIDs) {
-						// NOTE: we've already removed the peer's request, but we
-						// still need to clean up the rest.
-						bcR.Switch.StopPeerForError(peer2, fmt.Errorf("Reactor validation error: %v", err))
-					}
+				peerID2 := bcR.pool.RedoRequest(second.Height)
+				peer2 := bcR.Switch.Peers().Get(peerID2)
+				if peer2 != nil && peer2 != peer {
+					// NOTE: we've already removed the peer's request, but we
+					// still need to clean up the rest.
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("Reactor validation error: %v", err))
 				}
-
 				continue FOR_LOOP
 			}
 

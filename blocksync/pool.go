@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 
 	flow "github.com/cometbft/cometbft/libs/flowrate"
@@ -29,12 +30,12 @@ eg, L = latency = 0.1s
 
 const (
 	requestIntervalMS  = 2
-	maxTotalRequesters = 50
+	maxTotalRequesters = 10
 	//maxTotalRequesters        = 1200
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 20
 	//maxPendingRequestsPerPeer = 50
-	requestRetrySeconds = 30
+	requestRetrySeconds = 5
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending us data at at least that rate, we
@@ -220,19 +221,17 @@ func (pool *BlockPool) PopRequest() {
 // RedoRequest invalidates the block at pool.height,
 // Remove the peer and redo request from others.
 // Returns the ID of the removed peer.
-func (pool *BlockPool) RedoRequest(height int64) []p2p.ID {
+func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	request := pool.requesters[height]
-	peerIDs := request.getPeerID()
-	if peerIDs != nil {
+	peerID := request.getPeerID()
+	if peerID != p2p.ID("") {
 		// RemovePeer will redo all requesters associated with this peer.
-		for _, peerID := range peerIDs {
-			pool.removePeer(peerID)
-		}
+		pool.removePeer(peerID)
 	}
-	return peerIDs
+	return peerID
 }
 
 // AddBlock validates that the block comes from the peer it was expected from and calls the requester to store it.
@@ -261,6 +260,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 		// }
 		return
 	}
+
+	fmt.Println("in add block", block.Height)
 
 	if requester.setBlock(block, peerID) {
 		peer := pool.peers[peerID]
@@ -310,11 +311,11 @@ func (pool *BlockPool) RemovePeer(peerID p2p.ID) {
 }
 
 func (pool *BlockPool) removePeer(peerID p2p.ID) {
-	// for _, requester := range pool.requesters {
-	// 	if idExists(peerID, requester.getPeerID()) {
-	// 		requester.redo(peerID)
-	// 	}
-	// }
+	for _, requester := range pool.requesters {
+		if requester.getPeerID() == peerID {
+			requester.redo(peerID)
+		}
+	}
 
 	peer, ok := pool.peers[peerID]
 	if ok {
@@ -384,9 +385,9 @@ func (pool *BlockPool) pickIncrAvailablePeers(height int64) []*bpPeer {
 
 	var peers []*bpPeer
 	peerLimit := 3
-	if height > pool.height+10 {
-		peerLimit = 1
-	}
+	// if height > pool.height+10 {
+	// 	peerLimit = 1
+	// }
 	for _, peer := range peerSlice {
 		if len(peers) >= peerLimit {
 			break
@@ -437,7 +438,7 @@ func (pool *BlockPool) requestersLen() int64 {
 	return int64(len(pool.requesters))
 }
 
-func (pool *BlockPool) sendRequest(height int64, peerIDs []p2p.ID) {
+func (pool *BlockPool) sendRequest(height int64, peerIDs p2p.ID) {
 	if !pool.IsRunning() {
 		return
 	}
@@ -554,9 +555,9 @@ type bpRequester struct {
 	gotBlockCh chan struct{}
 	redoCh     chan p2p.ID // redo may send multitime, add peerId to identify repeat
 
-	mtx     cmtsync.Mutex
-	peerIDs []p2p.ID
-	block   *types.Block
+	mtx    cmtsync.Mutex
+	peerID p2p.ID
+	block  *types.Block
 }
 
 func newBPRequester(pool *BlockPool, height int64) *bpRequester {
@@ -566,8 +567,8 @@ func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 		gotBlockCh: make(chan struct{}, 1),
 		redoCh:     make(chan p2p.ID, 1),
 
-		peerIDs: nil,
-		block:   nil,
+		peerID: "",
+		block:  nil,
 	}
 	bpr.BaseService = *service.NewBaseService(nil, "bpRequester", bpr)
 	return bpr
@@ -581,7 +582,9 @@ func (bpr *bpRequester) OnStart() error {
 // Returns true if the peer matches and block doesn't already exist.
 func (bpr *bpRequester) setBlock(block *types.Block, peerID p2p.ID) bool {
 	bpr.mtx.Lock()
-	if bpr.block != nil || !idExists(peerID, bpr.peerIDs) {
+	// temp remove
+	// || bpr.peerID != peerID
+	if bpr.block != nil {
 		bpr.mtx.Unlock()
 		return false
 	}
@@ -601,10 +604,10 @@ func (bpr *bpRequester) getBlock() *types.Block {
 	return bpr.block
 }
 
-func (bpr *bpRequester) getPeerID() []p2p.ID {
+func (bpr *bpRequester) getPeerID() p2p.ID {
 	bpr.mtx.Lock()
 	defer bpr.mtx.Unlock()
-	return bpr.peerIDs
+	return bpr.peerID
 }
 
 // This is called from the requestRoutine, upon redo().
@@ -612,9 +615,12 @@ func (bpr *bpRequester) reset() {
 	bpr.mtx.Lock()
 	defer bpr.mtx.Unlock()
 
-	bpr.peerIDs = nil
+	// if bpr.block != nil {
+	// 	atomic.AddInt32(&bpr.pool.numPending, 1)
+	// }
+
+	bpr.peerID = ""
 	bpr.block = nil
-	//bpr.pool.heightRecv[bpr.height] = false
 }
 
 // Tells bpRequester to pick another peer and try again.
@@ -688,7 +694,6 @@ func (bpr *bpRequester) redo(peerID p2p.ID) {
 // }
 
 func (bpr *bpRequester) requestRoutine() {
-OUTER_LOOP:
 	for {
 		// Pick peers to send request to.
 		var peers []*bpPeer
@@ -698,62 +703,85 @@ OUTER_LOOP:
 				return
 			}
 			peers = bpr.pool.pickIncrAvailablePeers(bpr.height) // function to get all available peers
-			if len(peers) == 0 {
+			if len(peers) < 3 {
 				bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
 			break PICK_PEER_LOOP
 		}
-		bpr.mtx.Lock()
-		bpr.peerIDs = nil
-		for _, peer := range peers {
-			bpr.peerIDs = append(bpr.peerIDs, peer.id)
-			// Send request and wait.
-			// if i == 0 {
-			// 	fmt.Println("sending request for height ", bpr.height)
-			// }
-			//fmt.Println("sending request for height ", bpr.height, "ID ", bpr.peerID)
-		}
-		bpr.pool.sendRequest(bpr.height, bpr.peerIDs)
-		bpr.mtx.Unlock()
+		// bpr.mtx.Lock()
+		// for _, peer := range peers {
+		// 	bpr.peerIDs = append(bpr.peerIDs, peer.id)
+		// 	// Send request and wait.
+		// 	// if i == 0 {
+		// 	// 	fmt.Println("sending request for height ", bpr.height)
+		// 	// }
+		// 	//fmt.Println("sending request for height ", bpr.height, "ID ", bpr.peerID)
+		// }
+		// //bpr.pool.sendRequest(bpr.height, bpr.peerIDs)
+		// bpr.mtx.Unlock()
 
-		to := time.NewTimer(requestRetrySeconds * time.Second)
-	WAIT_LOOP:
+		//to := time.NewTimer(requestRetrySeconds * time.Second)
+
+		// Create a channel to signal the arrival of a block.
+		blockArrived := make(chan struct{}, 1)
+		var wg sync.WaitGroup
+
+		fmt.Println("length peers ", len(peers))
+		for _, peer := range peers {
+			wg.Add(1)
+			go func(peer *bpPeer) {
+				defer wg.Done()
+				fmt.Println("go routine send req ", bpr.height)
+				bpr.pool.sendRequest(bpr.height, peer.id)
+				select {
+				case <-blockArrived:
+					// If a block has arrived from another peer, stop this goroutine.
+					return
+				case <-time.After(requestRetrySeconds * time.Second):
+					// Timeout for this peer; consider sending a new request or logging an error.
+					bpr.Logger.Debug("Request to peer timed out", "peer", peer.id, "height", bpr.height)
+				}
+			}(peer)
+		}
+
 		for {
 			select {
 			case <-bpr.pool.Quit():
-				if err := bpr.Stop(); err != nil {
-					bpr.Logger.Error("Error stopped requester", "err", err)
-				}
+				close(blockArrived)
+				wg.Wait() // Wait for all request goroutines to finish.
 				return
 			case <-bpr.Quit():
+				close(blockArrived)
+				wg.Wait() // Wait for all request goroutines to finish.
 				return
-			case <-to.C:
-				fmt.Println("GOT TIMEOUT REQUEST ", bpr.height)
-				if bpr.pool.heightRecv[bpr.height] {
-					continue WAIT_LOOP
-				}
-				bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerIDs)
-				// Simulate a redo
-				bpr.reset()
-				continue OUTER_LOOP
-			case peerID := <-bpr.redoCh:
-				fmt.Println("GOT REDO REQUEST ", bpr.height)
-				if bpr.pool.heightRecv[bpr.height] {
-					continue WAIT_LOOP
-				}
-				if idExists(peerID, bpr.peerIDs) {
-					bpr.reset()
-					continue OUTER_LOOP
-				} else {
-					continue WAIT_LOOP
-				}
+			// case <-to.C:
+			// 	fmt.Println("GOT TIMEOUT REQUEST ", bpr.height)
+			// 	if bpr.pool.heightRecv[bpr.height] {
+			// 		continue WAIT_LOOP
+			// 	}
+			// 	bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerIDs)
+			// 	// Simulate a redo
+			// 	bpr.reset()
+			// 	continue OUTER_LOOP
+			// case peerID := <-bpr.redoCh:
+			// 	fmt.Println("GOT REDO REQUEST ", bpr.height)
+			// 	if bpr.pool.heightRecv[bpr.height] {
+			// 		continue WAIT_LOOP
+			// 	}
+			// 	if idExists(peerID, bpr.peerIDs) {
+			// 		bpr.reset()
+			// 		continue OUTER_LOOP
+			// 	} else {
+			// 		continue WAIT_LOOP
+			// 	}
 			case <-bpr.gotBlockCh:
-				// We got a block!
-				// Continue the for-loop and wait til Quit.
-				bpr.pool.heightRecv[bpr.height] = true
-				continue WAIT_LOOP
+				// We got a block! Signal all goroutines to stop.
+				fmt.Println("got block ch ", bpr.height)
+				close(blockArrived)
+				wg.Wait() // Wait for all request goroutines to finish.
+				return
 			}
 		}
 	}
@@ -771,6 +799,6 @@ func idExists(id p2p.ID, ids []p2p.ID) bool {
 // BlockRequest stores a block request identified by the block Height and the PeerID responsible for
 // delivering the block
 type BlockRequest struct {
-	Height  int64
-	PeerIDs []p2p.ID
+	Height int64
+	PeerID p2p.ID
 }
