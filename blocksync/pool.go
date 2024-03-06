@@ -775,6 +775,9 @@ OUTER_LOOP:
 				}
 				// If both peers returned NoBlockResponse or bad block, reschedule both
 				// requests. If not, wait for the other peer.
+				if len(bpr.requestedFrom()) == 0 {
+					continue OUTER_LOOP
+				}
 			case newHeight := <-bpr.newHeightCh:
 				if !gotBlock && bpr.height-newHeight < minBlocksForSingleRequest {
 					// The operation is a noop if the second peer is already set. The cost is checking a mutex.
