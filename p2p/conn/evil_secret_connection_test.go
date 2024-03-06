@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	gogotypes "github.com/cosmos/gogoproto/types"
-	"github.com/oasisprotocol/curve25519-voi/primitives/merlin"
+	"github.com/gtank/merlin"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/chacha20poly1305"
 
@@ -208,7 +208,9 @@ func (c *evilConn) signChallenge() []byte {
 
 	const challengeSize = 32
 	var challenge [challengeSize]byte
-	transcript.ExtractBytes(challenge[:], labelSecretConnectionMac)
+	challengeSlice := transcript.ExtractBytes(labelSecretConnectionMac, challengeSize)
+
+	copy(challenge[:], challengeSlice[0:challengeSize])
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
