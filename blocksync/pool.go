@@ -99,8 +99,8 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
-	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
+	go pool.makeRequestersRoutine()
 	return nil
 }
 
