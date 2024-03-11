@@ -78,10 +78,13 @@ func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 }
 
 func TestBlockPoolBasic(t *testing.T) {
-	start := int64(42)
-	peers := makePeers(10, start+1, 1000)
-	errorsCh := make(chan peerError, 1000)
-	requestsCh := make(chan BlockRequest, 1000)
+	var (
+		start      = int64(42)
+		peers      = makePeers(10, start, 1000)
+		errorsCh   = make(chan peerError)
+		requestsCh = make(chan BlockRequest)
+	)
+
 	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
 
@@ -96,15 +99,12 @@ func TestBlockPoolBasic(t *testing.T) {
 		}
 	})
 
+	for _, peer := range peers {
+		pool.SetPeerRange(peer.id, peer.base, peer.height)
+	}
+
 	peers.start()
 	defer peers.stop()
-
-	// Introduce each peer.
-	go func() {
-		for _, peer := range peers {
-			pool.SetPeerRange(peer.id, peer.base, peer.height)
-		}
-	}()
 
 	// Start a goroutine to pull blocks
 	go func() {
@@ -116,7 +116,7 @@ func TestBlockPoolBasic(t *testing.T) {
 			if first != nil && second != nil {
 				pool.PopRequest()
 			} else {
-				time.Sleep(1 * time.Second)
+				time.Sleep(10 * time.Millisecond)
 			}
 		}
 	}()
@@ -131,23 +131,30 @@ func TestBlockPoolBasic(t *testing.T) {
 			if request.Height == 300 {
 				return // Done!
 			}
-
 			peers[request.PeerID].inputChan <- inputData{t, pool, request}
+		case <-time.After(10 * time.Second):
+			t.Error("Timed out waiting for block requests")
+			return
 		}
 	}
 }
 
 func TestBlockPoolTimeout(t *testing.T) {
-	start := int64(42)
-	peers := makePeers(10, start+1, 1000)
-	errorsCh := make(chan peerError, 1000)
-	requestsCh := make(chan BlockRequest, 1000)
+	var (
+		start      = int64(42)
+		peers      = makePeers(10, start, 1000)
+		errorsCh   = make(chan peerError)
+		requestsCh = make(chan BlockRequest)
+	)
+
 	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
+
 	err := pool.Start()
 	if err != nil {
 		t.Error(err)
 	}
+
 	t.Cleanup(func() {
 		if err := pool.Stop(); err != nil {
 			t.Error(err)
@@ -155,15 +162,8 @@ func TestBlockPoolTimeout(t *testing.T) {
 	})
 
 	for _, peer := range peers {
-		t.Logf("Peer %v", peer.id)
+		pool.SetPeerRange(peer.id, peer.base, peer.height)
 	}
-
-	// Introduce each peer.
-	go func() {
-		for _, peer := range peers {
-			pool.SetPeerRange(peer.id, peer.base, peer.height)
-		}
-	}()
 
 	// Start a goroutine to pull blocks
 	go func() {
@@ -175,7 +175,7 @@ func TestBlockPoolTimeout(t *testing.T) {
 			if first != nil && second != nil {
 				pool.PopRequest()
 			} else {
-				time.Sleep(1 * time.Second)
+				time.Sleep(10 * time.Millisecond)
 			}
 		}
 	}()
@@ -196,6 +196,9 @@ func TestBlockPoolTimeout(t *testing.T) {
 			}
 		case request := <-requestsCh:
 			t.Logf("Pulled new BlockRequest %+v", request)
+		case <-time.After(10 * time.Second):
+			t.Error("Timed out waiting for block requests")
+			return
 		}
 	}
 }
