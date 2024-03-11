@@ -252,6 +252,7 @@ func (bcR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		bcR.pool.SetPeerRange(e.Src.ID(), msg.Base, msg.Height)
 	case *bcproto.NoBlockResponse:
 		bcR.Logger.Debug("Peer does not have requested block", "peer", e.Src, "height", msg.Height)
+		bcR.pool.RedoRequestFrom(msg.Height, e.Src.ID())
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
