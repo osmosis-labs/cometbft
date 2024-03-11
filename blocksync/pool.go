@@ -425,8 +425,6 @@ func (pool *BlockPool) sortPeers() {
 
 func (pool *BlockPool) makeNextRequester(nextHeight int64) {
 	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
-
 	request := newBPRequester(pool, nextHeight)
 	pool.requesters[nextHeight] = request
 	pool.mtx.Unlock()
