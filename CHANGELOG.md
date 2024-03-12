@@ -6,6 +6,7 @@
 * [#11](https://github.com/osmosis-labs/cometbft/pull/11) Skip verification of commit sigs
 * [#13](https://github.com/osmosis-labs/cometbft/pull/13) Avoid double-saving ABCI responses
 * [#17](https://github.com/osmosis-labs/cometbft/pull/17) Set the max number of (concurrently) downloaded blocks to {peersCount * 20}
+* [#18](https://github.com/osmosis-labs/cometbft/pull/18) Sort peers by download rate & multiple requests for closer blocks
 
 ## osmo-v23/v0.37.4-2
 
