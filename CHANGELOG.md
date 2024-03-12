@@ -6,17 +6,17 @@
 * [#11](https://github.com/osmosis-labs/cometbft/pull/11) Skip verification of commit sigs
 * [#13](https://github.com/osmosis-labs/cometbft/pull/13) Avoid double-saving ABCI responses
 
-## osmo-v23/v0.37.4-3
+## v0.37.4-v23-osmo-3
 
 * [#17](https://github.com/osmosis-labs/cometbft/pull/17) Set the max number of (concurrently) downloaded blocks to {peersCount * 20}
 * [#18](https://github.com/osmosis-labs/cometbft/pull/18) Sort peers by download rate & multiple requests for closer blocks
 
-## osmo-v23/v0.37.4-2
+## v0.37.4-v23-osmo-2
 
 * [#3](https://github.com/osmosis-labs/cometbft/pull/3) Avoid double-calling types.BlockFromProto
 * [#4](https://github.com/osmosis-labs/cometbft/pull/4) Do not validatorBlock twice
 
-## osmo-v23/v0.37.4-1
+## v0.37.4-v23-osmo-1
 
 ## v0.37.4
 
