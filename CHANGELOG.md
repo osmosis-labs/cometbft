@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.37.4-v24-osmo-2
+
+* [#20](https://github.com/osmosis-labs/cometbft/pull/20) Fix the rollback command
+
+## v0.37.4-v24-osmo-1
+
 * [#5](https://github.com/osmosis-labs/cometbft/pull/5) Batch verification
 * [#11](https://github.com/osmosis-labs/cometbft/pull/11) Skip verification of commit sigs
 * [#13](https://github.com/osmosis-labs/cometbft/pull/13) Avoid double-saving ABCI responses
