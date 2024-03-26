@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches:
-      - v0.37.x
+      - osmo/v0.37.4
 
 jobs:
   build:
