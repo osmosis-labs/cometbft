@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Move websocket logs to Debug
+
 ## v0.37.4-v24-osmo-2
 
 * [#20](https://github.com/osmosis-labs/cometbft/pull/20) Fix the rollback command
