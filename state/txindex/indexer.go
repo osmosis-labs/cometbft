@@ -25,7 +25,7 @@ type TxIndexer interface {
 	Get(hash []byte) (*abci.TxResult, error)
 
 	// Search allows you to query for transactions.
-	Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
+	Search(ctx context.Context, q *query.Query, page, perPage int, orderBy string) ([]*abci.TxResult, int, error)
 }
 
 // Batch groups together multiple Index operations to be performed at the same time.
