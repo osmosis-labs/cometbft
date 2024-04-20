@@ -512,7 +512,7 @@ func (txi *TxIndex) match(
 		//
 		// 1. Regardless if a previous match was attempted, which may have had
 		// results, but no match was found for the current condition, then we
-		// return no matches ("assuming AND operand).
+		// return no matches (assuming AND operand).
 		//
 		// 2. A previous match was not attempted, so we return all results.
 		return tmpHashes
@@ -584,9 +584,18 @@ LOOP:
 			if !ok {
 				continue LOOP
 			}
+			// Regardless of the query condition, we retrieve the height in order to sort later
 			keyHeight, err := extractHeightFromKey(it.Key())
-			if err != nil || !checkHeightConditions(heightInfo, keyHeight) {
+			if err != nil {
 				continue LOOP
+			}
+			if qr.Key != types.TxHeightKey {
+				// If the query condition specifies a height range, we need to check if the height
+				// of the transaction is within the range
+				if !checkHeightConditions(heightInfo, keyHeight) {
+					continue LOOP
+				}
+
 			}
 
 			if checkBounds(qr, v) {
