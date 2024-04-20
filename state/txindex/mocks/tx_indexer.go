@@ -69,27 +69,34 @@ func (_m *TxIndexer) Index(result *types.TxResult) error {
 	return r0
 }
 
-// Search provides a mock function with given fields: ctx, q
-func (_m *TxIndexer) Search(ctx context.Context, q *query.Query) ([]*types.TxResult, error) {
-	ret := _m.Called(ctx, q)
+// Search provides a mock function with given fields: ctx, q, page, perPage, orderBy
+func (_m *TxIndexer) Search(ctx context.Context, q *query.Query, page int, perPage int, orderBy string) ([]*types.TxResult, int, error) {
+	ret := _m.Called(ctx, q, page, perPage, orderBy)
 
 	var r0 []*types.TxResult
-	if rf, ok := ret.Get(0).(func(context.Context, *query.Query) []*types.TxResult); ok {
-		r0 = rf(ctx, q)
+	if rf, ok := ret.Get(0).(func(context.Context, *query.Query, int, int, string) []*types.TxResult); ok {
+		r0 = rf(ctx, q, page, perPage, orderBy)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*types.TxResult)
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *query.Query) error); ok {
-		r1 = rf(ctx, q)
+	var r1 int
+	if rf, ok := ret.Get(1).(func(context.Context, *query.Query, int, int, string) int); ok {
+		r1 = rf(ctx, q, page, perPage, orderBy)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, *query.Query, int, int, string) error); ok {
+		r2 = rf(ctx, q, page, perPage, orderBy)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 type mockConstructorTestingTNewTxIndexer interface {
