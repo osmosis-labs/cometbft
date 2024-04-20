@@ -316,7 +316,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage in
 		hashKeys = append(hashKeys, k)
 	}
 
-	// Sort by height, and then lexicographically for the same height
+	// Sort by height
 	sort.Slice(hashKeys, func(i, j int) bool {
 		hi := filteredHashes[hashKeys[i]].Height
 		hj := filteredHashes[hashKeys[j]].Height
@@ -342,8 +342,8 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage in
 	if startIndex >= len(hashKeys) {
 		return []*abci.TxResult{}, 0, nil
 	}
-	paginatedKeys := hashKeys[startIndex:endIndex]
 
+	paginatedKeys := hashKeys[startIndex:endIndex]
 	results := make([]*abci.TxResult, 0, len(paginatedKeys))
 	resultMap := make(map[string]struct{})
 RESULTS_LOOP:
