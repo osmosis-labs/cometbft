@@ -16,6 +16,7 @@ import (
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/pubsub/query"
+	"github.com/cometbft/cometbft/rpc/core"
 	"github.com/cometbft/cometbft/state/indexer"
 	"github.com/cometbft/cometbft/state/txindex"
 	"github.com/cometbft/cometbft/types"
@@ -297,16 +298,23 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage in
 		}
 	}
 
+	// Now that we know the total number of results, validate that the page
+	// requested is within bounds
+	numResults := len(filteredHashes)
+	page, err = core.ValidatePage(&page, perPage, numResults)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	// Calculate pagination start and end indices
 	startIndex := (page - 1) * perPage
 	endIndex := startIndex + perPage
 
 	// Convert map keys to slice for deterministic ordering
-	hashKeys := make([]string, 0, len(filteredHashes))
+	hashKeys := make([]string, 0, numResults)
 	for k := range filteredHashes {
 		hashKeys = append(hashKeys, k)
 	}
-	numResults := len(hashKeys)
 
 	// Sort by height, and then lexicographically for the same height
 	sort.Slice(hashKeys, func(i, j int) bool {

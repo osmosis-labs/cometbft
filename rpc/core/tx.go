@@ -81,13 +81,6 @@ func TxSearch(
 		return nil, err
 	}
 
-	// Now that we know the total number of results, validate that the page
-	// requested is within bounds
-	_, err = validatePage(pagePtr, perPage, totalCount)
-	if err != nil {
-		return nil, err
-	}
-
 	apiResults := make([]*ctypes.ResultTx, 0, len(results))
 	for _, r := range results {
 		var proof types.TxProof
