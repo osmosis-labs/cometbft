@@ -104,7 +104,7 @@ type Environment struct {
 
 //----------------------------------------------
 
-func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
+func ValidatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
 		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
 	}
