@@ -76,7 +76,6 @@ func TxSearch(
 		*pagePtr = 1
 	}
 
-	// Adjusted call to Search to include pagination parameters
 	results, totalCount, err := env.TxIndexer.Search(ctx.Context(), q, *pagePtr, perPage, orderBy)
 	if err != nil {
 		return nil, err
