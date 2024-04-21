@@ -76,7 +76,14 @@ func TxSearch(
 		*pagePtr = 1
 	}
 
-	results, totalCount, err := env.TxIndexer.Search(ctx.Context(), q, *pagePtr, perPage, orderBy)
+	pagSettings := ctypes.Pagination{
+		OrderDesc:   orderBy == "desc",
+		IsPaginated: true,
+		Page:        *pagePtr,
+		PerPage:     perPage,
+	}
+
+	results, totalCount, err := env.TxIndexer.Search(ctx.Context(), q, pagSettings)
 	if err != nil {
 		return nil, err
 	}
