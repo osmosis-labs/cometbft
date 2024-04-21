@@ -16,7 +16,7 @@ import (
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/pubsub/query"
-	"github.com/cometbft/cometbft/rpc/core"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cometbft/cometbft/state/indexer"
 	"github.com/cometbft/cometbft/state/txindex"
 	"github.com/cometbft/cometbft/types"
@@ -199,7 +199,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 //
 // Search will exit early and return any result fetched so far,
 // when a message is received on the context chan.
-func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage int, orderBy string) ([]*abci.TxResult, int, error) {
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query, pagSettings ctypes.Pagination) ([]*abci.TxResult, int, error) {
 	select {
 	case <-ctx.Done():
 		return make([]*abci.TxResult, 0), 0, nil
@@ -298,17 +298,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage in
 		}
 	}
 
-	// Now that we know the total number of results, validate that the page
-	// requested is within bounds
 	numResults := len(filteredHashes)
-	page, err = core.ValidatePage(&page, perPage, numResults)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Calculate pagination start and end indices
-	startIndex := (page - 1) * perPage
-	endIndex := startIndex + perPage
 
 	// Convert map keys to slice for deterministic ordering
 	hashKeys := make([]string, 0, numResults)
@@ -322,32 +312,48 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query, page, perPage in
 		hj := filteredHashes[hashKeys[j]].Height
 		if hi == hj {
 			// If heights are equal, sort lexicographically
-			if orderBy == "asc" {
-				return hashKeys[i] < hashKeys[j]
-			} else {
+			if pagSettings.OrderDesc {
 				return hashKeys[i] > hashKeys[j]
+			} else {
+				return hashKeys[i] < hashKeys[j]
 			}
 		}
-		if orderBy == "asc" {
-			return hi < hj
-		} else {
+		if pagSettings.OrderDesc {
 			return hi > hj
+
+		} else {
+			return hi < hj
 		}
 	})
 
-	// Apply pagination limits
-	if endIndex > len(hashKeys) {
-		endIndex = len(hashKeys)
-	}
-	if startIndex >= len(hashKeys) {
-		return []*abci.TxResult{}, 0, nil
+	// If paginated, determine which hash keys to return
+	if pagSettings.IsPaginated {
+		// Now that we know the total number of results, validate that the page
+		// requested is within bounds
+		pagSettings.Page, err = validatePage(&pagSettings.Page, pagSettings.PerPage, numResults)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		// Calculate pagination start and end indices
+		startIndex := (pagSettings.Page - 1) * pagSettings.PerPage
+		endIndex := startIndex + pagSettings.PerPage
+
+		// Apply pagination limits
+		if endIndex > len(hashKeys) {
+			endIndex = len(hashKeys)
+		}
+		if startIndex >= len(hashKeys) {
+			return []*abci.TxResult{}, 0, nil
+		}
+
+		hashKeys = hashKeys[startIndex:endIndex]
 	}
 
-	paginatedKeys := hashKeys[startIndex:endIndex]
-	results := make([]*abci.TxResult, 0, len(paginatedKeys))
+	results := make([]*abci.TxResult, 0, len(hashKeys))
 	resultMap := make(map[string]struct{})
 RESULTS_LOOP:
-	for _, hKey := range paginatedKeys {
+	for _, hKey := range hashKeys {
 		h := filteredHashes[hKey].TxBytes
 		res, err := txi.Get(h)
 		if err != nil {
@@ -766,4 +772,25 @@ func lookForHeight(conditions []query.Condition) (height int64) {
 		}
 	}
 	return 0
+}
+
+func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
+	if perPage < 1 {
+		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+	}
+
+	if pagePtr == nil { // no page parameter
+		return 1, nil
+	}
+
+	pages := ((totalCount - 1) / perPage) + 1
+	if pages == 0 {
+		pages = 1 // one page (even if it's empty)
+	}
+	page := *pagePtr
+	if page <= 0 || page > pages {
+		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+	}
+
+	return page, nil
 }

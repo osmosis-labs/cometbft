@@ -5,8 +5,10 @@ package mocks
 import (
 	context "context"
 
-	query "github.com/cometbft/cometbft/libs/pubsub/query"
+	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	mock "github.com/stretchr/testify/mock"
+
+	query "github.com/cometbft/cometbft/libs/pubsub/query"
 
 	txindex "github.com/cometbft/cometbft/state/txindex"
 
@@ -69,13 +71,13 @@ func (_m *TxIndexer) Index(result *types.TxResult) error {
 	return r0
 }
 
-// Search provides a mock function with given fields: ctx, q, page, perPage, orderBy
-func (_m *TxIndexer) Search(ctx context.Context, q *query.Query, page int, perPage int, orderBy string) ([]*types.TxResult, int, error) {
-	ret := _m.Called(ctx, q, page, perPage, orderBy)
+// Search provides a mock function with given fields: ctx, q, pagSettings
+func (_m *TxIndexer) Search(ctx context.Context, q *query.Query, pagSettings coretypes.Pagination) ([]*types.TxResult, int, error) {
+	ret := _m.Called(ctx, q, pagSettings)
 
 	var r0 []*types.TxResult
-	if rf, ok := ret.Get(0).(func(context.Context, *query.Query, int, int, string) []*types.TxResult); ok {
-		r0 = rf(ctx, q, page, perPage, orderBy)
+	if rf, ok := ret.Get(0).(func(context.Context, *query.Query, coretypes.Pagination) []*types.TxResult); ok {
+		r0 = rf(ctx, q, pagSettings)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*types.TxResult)
@@ -83,15 +85,15 @@ func (_m *TxIndexer) Search(ctx context.Context, q *query.Query, page int, perPa
 	}
 
 	var r1 int
-	if rf, ok := ret.Get(1).(func(context.Context, *query.Query, int, int, string) int); ok {
-		r1 = rf(ctx, q, page, perPage, orderBy)
+	if rf, ok := ret.Get(1).(func(context.Context, *query.Query, coretypes.Pagination) int); ok {
+		r1 = rf(ctx, q, pagSettings)
 	} else {
 		r1 = ret.Get(1).(int)
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, *query.Query, int, int, string) error); ok {
-		r2 = rf(ctx, q, page, perPage, orderBy)
+	if rf, ok := ret.Get(2).(func(context.Context, *query.Query, coretypes.Pagination) error); ok {
+		r2 = rf(ctx, q, pagSettings)
 	} else {
 		r2 = ret.Error(2)
 	}
