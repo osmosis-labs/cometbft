@@ -232,7 +232,7 @@ func BlockSearch(
 	totalCount := len(results)
 	perPage := validatePerPage(perPagePtr)
 
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	page, err := ValidatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}

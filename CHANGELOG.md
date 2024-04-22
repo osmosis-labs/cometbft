@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [#21](https://github.com/osmosis-labs/cometbft/pull/21) Move websocket logs to Debug
+* [#22](https://github.com/osmosis-labs/cometbft/pull/22) Fix txSearch pagination performance issues
 
 ## v0.37.4-v24-osmo-2
 
