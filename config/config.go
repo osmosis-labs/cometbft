@@ -1190,7 +1190,7 @@ type StorageConfig struct {
 	// Compaction config
 	CompactOnPruning bool `mapstructure:"compact_on_pruning"`
 	// Compaction interval - number of blocks to try explicit compaciton on
-	// 1000 by defualt
+	// 1000 by default
 	CompactionInterval int64 `mapstructure:"compaction_interval"`
 }
 

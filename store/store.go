@@ -403,6 +403,9 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 	if bs.compact && bs.blocksDeleted >= bs.compactionInterval {
 		err = bs.db.Compact(nil, nil)
+		if err != nil {
+			return 0, err
+		}
 		bs.blocksDeleted = 0
 	}
 	return pruned, nil
