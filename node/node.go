@@ -332,8 +332,9 @@ type Node struct {
 	eventBus          *types.EventBus // pub/sub for services
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
-	bcReactor         p2p.Reactor       // for block-syncing
-	mempoolReactor    p2p.Reactor       // for gossipping transactions
+	pruner            *sm.Pruner
+	bcReactor         p2p.Reactor // for block-syncing
+	mempoolReactor    p2p.Reactor // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
@@ -953,13 +954,25 @@ func NewNodeWithContext(ctx context.Context,
 		return nil, err
 	}
 
-	// make block executor for consensus and blockchain reactors to execute blocks
+	pruner, err := createPruner(
+		config,
+		stateStore,
+		blockStore,
+		smMetrics,
+		logger.With("module", "state"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pruner: %w", err)
+	}
+
+	// make block executor for consensus and blocksync reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
 		mempool,
 		evidencePool,
+		sm.BlockExecutorWithPruner(pruner),
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 	offlineStateSyncHeight := int64(0)
@@ -1070,6 +1083,7 @@ func NewNodeWithContext(ctx context.Context,
 
 		stateStore:       stateStore,
 		blockStore:       blockStore,
+		pruner:           pruner,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
 		mempool:          mempool,
@@ -1158,6 +1172,11 @@ func (n *Node) OnStart() error {
 		}
 	}
 
+	// Start background pruning
+	if err := n.pruner.Start(); err != nil {
+		return fmt.Errorf("failed to start background pruning routine: %w", err)
+	}
+
 	return nil
 }
 
@@ -1168,6 +1187,9 @@ func (n *Node) OnStop() {
 	n.Logger.Info("Stopping Node")
 
 	// first stop the non-reactor services
+	if err := n.pruner.Stop(); err != nil {
+		n.Logger.Error("Error stopping the pruning service", "err", err)
+	}
 	if err := n.eventBus.Stop(); err != nil {
 		n.Logger.Error("Error closing eventBus", "err", err)
 	}
@@ -1654,4 +1676,77 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 		}
 	}
 	return nonEmptyStrings
+}
+
+// Set the initial application retain height to 0 to avoid the data companion pruning blocks
+// before the application indicates it is ok
+// We set this to 0 only if the retain height was not set before by the application
+func createPruner(
+	config *cfg.Config,
+	stateStore sm.Store,
+	blockStore *store.BlockStore,
+	metrics *sm.Metrics,
+	logger log.Logger,
+) (*sm.Pruner, error) {
+	if err := initApplicationRetainHeight(stateStore); err != nil {
+		return nil, err
+	}
+
+	prunerOpts := []sm.PrunerOption{
+		sm.WithPrunerInterval(config.Storage.Pruning.Interval),
+		sm.WithPrunerMetrics(metrics),
+	}
+
+	if config.Storage.Pruning.DataCompanion.Enabled {
+		err := initCompanionRetainHeights(
+			stateStore,
+			config.Storage.Pruning.DataCompanion.InitialBlockRetainHeight,
+			config.Storage.Pruning.DataCompanion.InitialBlockResultsRetainHeight,
+		)
+		if err != nil {
+			return nil, err
+		}
+		prunerOpts = append(prunerOpts, sm.WithPrunerCompanionEnabled())
+	}
+
+	return sm.NewPruner(stateStore, blockStore, logger, prunerOpts...), nil
+}
+
+// Set the initial application retain height to 0 to avoid the data companion
+// pruning blocks before the application indicates it is OK. We set this to 0
+// only if the retain height was not set before by the application.
+func initApplicationRetainHeight(stateStore sm.Store) error {
+	if _, err := stateStore.GetApplicationRetainHeight(); err != nil {
+		if errors.Is(err, sm.ErrKeyNotFound) {
+			return stateStore.SaveApplicationRetainHeight(0)
+		}
+		return err
+	}
+	return nil
+}
+
+// Sets the data companion retain heights if one of two possible conditions is
+// met:
+// 1. One or more of the retain heights has not yet been set.
+// 2. One or more of the retain heights is currently 0.
+func initCompanionRetainHeights(stateStore sm.Store, initBlockRH, initBlockResultsRH int64) error {
+	curBlockRH, err := stateStore.GetCompanionBlockRetainHeight()
+	if err != nil && !errors.Is(err, sm.ErrKeyNotFound) {
+		return fmt.Errorf("failed to obtain companion block retain height: %w", err)
+	}
+	if curBlockRH == 0 {
+		if err := stateStore.SaveCompanionBlockRetainHeight(initBlockRH); err != nil {
+			return fmt.Errorf("failed to set initial data companion block retain height: %w", err)
+		}
+	}
+	curBlockResultsRH, err := stateStore.GetABCIResRetainHeight()
+	if err != nil && !errors.Is(err, sm.ErrKeyNotFound) {
+		return fmt.Errorf("failed to obtain companion block results retain height: %w", err)
+	}
+	if curBlockResultsRH == 0 {
+		if err := stateStore.SaveABCIResRetainHeight(initBlockResultsRH); err != nil {
+			return fmt.Errorf("failed to set initial data companion block results retain height: %w", err)
+		}
+	}
+	return nil
 }

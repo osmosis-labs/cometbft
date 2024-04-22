@@ -267,7 +267,9 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
-// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
+// PruneBlocks removes block up to (but not including) a height. It returns the
+// number of blocks pruned and the evidence retain height - the height at which
+// data needed to prove evidence must not be removed.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	if height <= 0 {
 		return 0, fmt.Errorf("height must be greater than 0")
@@ -308,6 +310,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		if meta == nil { // assume already deleted
 			continue
 		}
+
 		if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
 			return 0, err
 		}
