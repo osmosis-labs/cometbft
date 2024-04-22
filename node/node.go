@@ -883,7 +883,7 @@ func NewNodeWithContext(ctx context.Context,
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
 		Compact:              config.Storage.CompactOnPruning,
 		CompactionInterval:   config.Storage.CompactionInterval,
-		Metrics:              smMetrics,
+		//Metrics:              smMetrics,
 	})
 
 	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(bstMetrics), store.WithCompaction(config.Storage.CompactOnPruning, config.Storage.CompactionInterval))
