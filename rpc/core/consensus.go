@@ -29,7 +29,7 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 
 	totalCount := len(validators.Validators)
 	perPage := validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	page, err := ValidatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cometbft/cometbft/libs/pubsub/query"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cometbft/cometbft/state/txindex"
 )
 
@@ -29,6 +30,6 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return nil
 }
 
-func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-	return []*abci.TxResult{}, nil
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query, pagSettings ctypes.Pagination) ([]*abci.TxResult, int, error) {
+	return []*abci.TxResult{}, 0, nil
 }
