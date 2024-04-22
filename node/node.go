@@ -115,21 +115,21 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *store.Metrics, *proxy.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *store.Metrics, *proxy.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				store.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				//store.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				proxy.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), store.NopMetrics(), proxy.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), proxy.NopMetrics()
 	}
 }
 
@@ -877,16 +877,16 @@ func NewNodeWithContext(ctx context.Context,
 		return nil, err
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics, bstMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
 
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
 		Compact:              config.Storage.CompactOnPruning,
 		CompactionInterval:   config.Storage.CompactionInterval,
-		//Metrics:              smMetrics,
+		Metrics:              smMetrics,
 	})
 
-	blockStore := store.NewBlockStore(blockStoreDB, store.WithMetrics(bstMetrics), store.WithCompaction(config.Storage.CompactOnPruning, config.Storage.CompactionInterval))
+	blockStore := store.NewBlockStore(blockStoreDB, store.WithCompaction(config.Storage.CompactOnPruning, config.Storage.CompactionInterval))
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, abciMetrics)
