@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -257,7 +258,10 @@ func (p *Pruner) pruneBlocks() {
 		case <-p.Quit():
 			return
 		default:
+			fmt.Println()
+			fmt.Println("pruneBlocks Last Retain Height: ", lastRetainHeight)
 			newRetainHeight := p.pruneBlocksToRetainHeight(lastRetainHeight)
+			fmt.Println("pruneBlocks New Retain Height: ", newRetainHeight)
 			if newRetainHeight != lastRetainHeight {
 				p.observer.PrunerPrunedBlocks(&BlocksPrunedInfo{
 					FromHeight: lastRetainHeight,
@@ -272,6 +276,7 @@ func (p *Pruner) pruneBlocks() {
 
 func (p *Pruner) pruneBlocksToRetainHeight(lastRetainHeight int64) int64 {
 	targetRetainHeight := p.findMinBlockRetainHeight()
+	fmt.Println("pruneBlocksToRetainHeight Target Retain Height: ", targetRetainHeight)
 	if targetRetainHeight == lastRetainHeight {
 		return lastRetainHeight
 	}
@@ -279,6 +284,7 @@ func (p *Pruner) pruneBlocksToRetainHeight(lastRetainHeight int64) int64 {
 	// The new retain height is the current lowest point of the block store
 	// indicated by Base()
 	newRetainHeight := p.bs.Base()
+	fmt.Println("pruneBlocksToRetainHeight New Retain Height: ", newRetainHeight)
 	if err != nil {
 		p.logger.Error("Failed to prune blocks", "err", err, "targetRetainHeight", targetRetainHeight, "newRetainHeight", newRetainHeight)
 	} else if pruned > 0 {
@@ -323,6 +329,7 @@ func (p *Pruner) findMinBlockRetainHeight() int64 {
 		p.logger.Error("Unexpected error fetching application retain height", "err", err)
 		return 0
 	}
+	fmt.Println("findMinBlockRetainHeight App Retain Height: ", appRetainHeight)
 	// We only care about the companion retain height if pruning is configured
 	// to respect the companion's retain height.
 	if !p.dcEnabled {
@@ -333,6 +340,7 @@ func (p *Pruner) findMinBlockRetainHeight() int64 {
 		p.logger.Error("Unexpected error fetching data companion retain height", "err", err)
 		return 0
 	}
+	fmt.Println("findMinBlockRetainHeight DC Retain Height: ", dcRetainHeight)
 	// If we are here, both heights were set and the companion is enabled, so
 	// we pick the minimum.
 	if appRetainHeight < dcRetainHeight {
@@ -353,6 +361,7 @@ func (p *Pruner) pruneBlocksToHeight(height int64) (uint64, error) {
 	// 	return 0, 0, ErrPrunerFailedToLoadState{Err: err}
 	// }
 	pruned, err := p.bs.PruneBlocks(height)
+	fmt.Println("pruneBlocksToHeight Pruned: ", pruned)
 	if err != nil {
 		return 0, ErrFailedToPruneBlocks{Height: height, Err: err}
 	}
