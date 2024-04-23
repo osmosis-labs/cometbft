@@ -1715,6 +1715,8 @@ func (cs *State) finalizeCommit(height int64) {
 		},
 		block,
 	)
+
+	fmt.Println("finalizeCommit retainHeight", retainHeight)
 	if err != nil {
 		panic(fmt.Sprintf("failed to apply block; error %v", err))
 	}
@@ -1722,6 +1724,7 @@ func (cs *State) finalizeCommit(height int64) {
 	fail.Fail() // XXX
 
 	if retainHeight > 0 && cs.blockExec.Pruner() != nil {
+		fmt.Println("finalizeCommit retainHeight > 0 && cs.blockExec.Pruner() != nil is true")
 		err := cs.blockExec.Pruner().SetApplicationBlockRetainHeight(retainHeight)
 		if err != nil {
 			logger.Error("failed to set application retain height to", "retain_height", retainHeight, "err", err)

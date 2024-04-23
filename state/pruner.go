@@ -131,14 +131,17 @@ func (p *Pruner) SetApplicationBlockRetainHeight(height int64) error {
 	// serialized.
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
+	fmt.Println("SetApplicationBlockRetainHeight Height: ", height)
 
 	if !p.heightWithinBounds(height) {
 		return ErrInvalidHeightValue
 	}
+	fmt.Println("SetApplicationBlockRetainHeight HeightWithinBounds true")
 	curRetainHeight, err := p.stateStore.GetApplicationRetainHeight()
 	if err != nil {
 		return ErrPrunerFailedToGetRetainHeight{Which: "application block", Err: err}
 	}
+	fmt.Println("SetApplicationBlockRetainHeight curRetainHeight: ", curRetainHeight)
 	if height < curRetainHeight {
 		return ErrPrunerCannotLowerRetainHeight
 	}
