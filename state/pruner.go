@@ -122,8 +122,6 @@ func (p *Pruner) SetObserver(obs PrunerObserver) {
 
 func (p *Pruner) OnStart() error {
 	go p.pruneBlocks()
-	go p.pruneABCIResponses()
-	go p.pruneIndexesRoutine()
 	// // We only care about pruning ABCI results if the data companion has been
 	// // enabled.
 	// if p.dcEnabled {
@@ -309,26 +307,26 @@ func (p *Pruner) GetBlockIndexerRetainHeight() (int64, error) {
 	return p.blockIndexer.GetRetainHeight()
 }
 
-func (p *Pruner) pruneABCIResponses() {
-	p.logger.Info("Started pruning ABCI responses", "interval", p.interval.String())
-	lastRetainHeight := int64(0)
-	for {
-		select {
-		case <-p.Quit():
-			return
-		default:
-			newRetainHeight := p.pruneABCIResToRetainHeight(lastRetainHeight)
-			if newRetainHeight != lastRetainHeight {
-				p.observer.PrunerPrunedABCIRes(&ABCIResponsesPrunedInfo{
-					FromHeight: lastRetainHeight,
-					ToHeight:   newRetainHeight - 1,
-				})
-			}
-			lastRetainHeight = newRetainHeight
-			time.Sleep(p.interval)
-		}
-	}
-}
+// func (p *Pruner) pruneABCIResponses() {
+// 	p.logger.Info("Started pruning ABCI responses", "interval", p.interval.String())
+// 	lastRetainHeight := int64(0)
+// 	for {
+// 		select {
+// 		case <-p.Quit():
+// 			return
+// 		default:
+// 			newRetainHeight := p.pruneABCIResToRetainHeight(lastRetainHeight)
+// 			if newRetainHeight != lastRetainHeight {
+// 				p.observer.PrunerPrunedABCIRes(&ABCIResponsesPrunedInfo{
+// 					FromHeight: lastRetainHeight,
+// 					ToHeight:   newRetainHeight - 1,
+// 				})
+// 			}
+// 			lastRetainHeight = newRetainHeight
+// 			time.Sleep(p.interval)
+// 		}
+// 	}
+// }
 
 func (p *Pruner) pruneBlocks() {
 	p.logger.Info("Started pruning blocks", "interval", p.interval.String())
@@ -342,6 +340,12 @@ func (p *Pruner) pruneBlocks() {
 			fmt.Println("pruneBlocks Last Retain Height: ", lastRetainHeight)
 			newRetainHeight := p.pruneBlocksToRetainHeight(lastRetainHeight)
 			fmt.Println("pruneBlocks New Retain Height: ", newRetainHeight)
+			fmt.Println("prune tx indexer")
+			p.pruneTxIndexerToRetainHeight(lastRetainHeight)
+			fmt.Println("prune block indexer")
+			p.pruneBlockIndexerToRetainHeight(lastRetainHeight)
+			fmt.Println("prune ABCI responses")
+			p.pruneABCIResToRetainHeight(lastRetainHeight)
 			if newRetainHeight != lastRetainHeight {
 				p.observer.PrunerPrunedBlocks(&BlocksPrunedInfo{
 					FromHeight: lastRetainHeight,
@@ -354,22 +358,22 @@ func (p *Pruner) pruneBlocks() {
 	}
 }
 
-func (p *Pruner) pruneIndexesRoutine() {
-	p.logger.Info("Index pruner started", "interval", p.interval.String())
-	lastTxIndexerRetainHeight := int64(0)
-	lastBlockIndexerRetainHeight := int64(0)
-	for {
-		select {
-		case <-p.Quit():
-			return
-		default:
-			lastTxIndexerRetainHeight = p.pruneTxIndexerToRetainHeight(lastTxIndexerRetainHeight)
-			lastBlockIndexerRetainHeight = p.pruneBlockIndexerToRetainHeight(lastBlockIndexerRetainHeight)
-			// TODO call observer
-			time.Sleep(p.interval)
-		}
-	}
-}
+// func (p *Pruner) pruneIndexesRoutine() {
+// 	p.logger.Info("Index pruner started", "interval", p.interval.String())
+// 	lastTxIndexerRetainHeight := int64(0)
+// 	lastBlockIndexerRetainHeight := int64(0)
+// 	for {
+// 		select {
+// 		case <-p.Quit():
+// 			return
+// 		default:
+// 			lastTxIndexerRetainHeight = p.pruneTxIndexerToRetainHeight(lastTxIndexerRetainHeight)
+// 			lastBlockIndexerRetainHeight = p.pruneBlockIndexerToRetainHeight(lastBlockIndexerRetainHeight)
+// 			// TODO call observer
+// 			time.Sleep(p.interval)
+// 		}
+// 	}
+// }
 
 func (p *Pruner) pruneTxIndexerToRetainHeight(lastRetainHeight int64) int64 {
 	targetRetainHeight, err := p.GetTxIndexerRetainHeight()
