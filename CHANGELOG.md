@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* [#27](https://github.com/osmosis-labs/cometbft/pull/27) Lower allocation overhead of txIndex matchRange
+* [#28](https://github.com/osmosis-labs/cometbft/pull/28) Significantly speedup bitArray.PickRandom
+* [#29](https://github.com/osmosis-labs/cometbft/pull/29) Lower heap overhead of JSON encoding
+* [#30](https://github.com/osmosis-labs/cometbft/pull/30) Cache the block hash
+
 ## v0.37.4-v24-osmo-3
 
 * [#21](https://github.com/osmosis-labs/cometbft/pull/21) Move websocket logs to Debug
