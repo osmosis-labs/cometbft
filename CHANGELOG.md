@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [#27](https://github.com/osmosis-labs/cometbft/pull/27) Lower allocation overhead of txIndex matchRange
+
 ## v0.37.4-v24-osmo-3
 
 * [#21](https://github.com/osmosis-labs/cometbft/pull/21) Move websocket logs to Debug
