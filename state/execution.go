@@ -182,9 +182,8 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // ApplyVerifiedBlock does the same as `ApplyBlock`, but skips verification.
 func (blockExec *BlockExecutor) ApplyVerifiedBlock(
 	state State, blockID types.BlockID, block *types.Block,
-) (State, error) {
-	newState, _, err := blockExec.applyBlock(state, blockID, block)
-	return newState, err
+) (State, int64, error) {
+	return blockExec.applyBlock(state, blockID, block)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
