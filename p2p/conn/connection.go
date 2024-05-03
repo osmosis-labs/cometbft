@@ -869,11 +869,10 @@ func (ch *Channel) writePacketMsgTo(w protoio.Writer) (n int, err error) {
 	packet := ch.nextPacketMsg()
 	n, err = w.WriteMsg(mustWrapPacket(&packet))
 	if err != nil {
-		err = ErrPacketWrite{Source: err}
+		return 0, err
 	}
-
 	atomic.AddInt64(&ch.recentlySent, int64(n))
-	return n, err
+	return n, nil
 }
 
 // Handles incoming PacketMsgs. It returns a message bytes if message is
