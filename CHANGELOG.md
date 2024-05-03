@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.37.4-v25-osmo-2 & v0.37.4-v24-osmo-5
+
+* [#35](https://github.com/osmosis-labs/cometbft/pull/35) Handle last element in PickRandom
+* [#38](https://github.com/osmosis-labs/cometbft/pull/38) Remove expensive Logger debug call in PublishEventTx
+* [#39](https://github.com/osmosis-labs/cometbft/pull/39) Change finalizeCommit to use applyVerifiedBlock
+* [#40](https://github.com/osmosis-labs/cometbft/pull/40) Speedup NewDelimitedWriter
+* [#41](https://github.com/osmosis-labs/cometbft/pull/41) Remove unnecessary atomic read
+* [#42](https://github.com/osmosis-labs/cometbft/pull/42) Remove a minint call that was appearing in write packet delays
+* [#43](https://github.com/osmosis-labs/cometbft/pull/43) Speedup extended commit.BitArray()
+
 ## v0.37.4-v24-osmo-4
 
 * [#27](https://github.com/osmosis-labs/cometbft/pull/27) Lower allocation overhead of txIndex matchRange
