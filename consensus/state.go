@@ -2057,13 +2057,15 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 }
 
 func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
-	cs.Logger.Debug(
-		"adding vote",
-		"vote_height", vote.Height,
-		"vote_type", vote.Type,
-		"val_index", vote.ValidatorIndex,
-		"cs_height", cs.Height,
-	)
+	if cs.Logger.DebugOn() {
+		cs.Logger.Debug(
+			"adding vote",
+			"vote_height", vote.Height,
+			"vote_type", vote.Type,
+			"val_index", vote.ValidatorIndex,
+			"cs_height", cs.Height,
+		)
+	}
 
 	if vote.Height < cs.Height || (vote.Height == cs.Height && vote.Round < cs.Round) {
 		cs.metrics.MarkLateVote(vote.Type)
@@ -2083,7 +2085,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 			return
 		}
 
-		cs.Logger.Debug("added vote to last precommits", "last_commit", cs.LastCommit.StringShort())
+		if cs.Logger.DebugOn() {
+			cs.Logger.Debug("added vote to last precommits", "last_commit", cs.LastCommit.StringShort())
+		}
 		if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
 			return added, err
 		}
@@ -2127,7 +2131,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	switch vote.Type {
 	case cmtproto.PrevoteType:
 		prevotes := cs.Votes.Prevotes(vote.Round)
-		cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
+		if cs.Logger.DebugOn() {
+			cs.Logger.Debug("added vote to prevote", "vote", vote, "prevotes", prevotes.StringShort())
+		}
 
 		// If +2/3 prevotes for a block or nil for *any* round:
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
@@ -2141,8 +2147,9 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
 				!cs.LockedBlock.HashesTo(blockID.Hash) {
-
-				cs.Logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
+				if cs.Logger.DebugOn() {
+					cs.Logger.Debug("unlocking because of POL", "locked_round", cs.LockedRound, "pol_round", vote.Round)
+				}
 
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
@@ -2157,16 +2164,20 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 			// NOTE: our proposal block may be nil or not what received a polka..
 			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
-					cs.Logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
+					if cs.Logger.DebugOn() {
+						cs.Logger.Debug("updating valid block because of POL", "valid_round", cs.ValidRound, "pol_round", vote.Round)
+					}
 					cs.ValidRound = vote.Round
 					cs.ValidBlock = cs.ProposalBlock
 					cs.ValidBlockParts = cs.ProposalBlockParts
 				} else {
-					cs.Logger.Debug(
-						"valid block we do not know about; set ProposalBlock=nil",
-						"proposal", log.NewLazyBlockHash(cs.ProposalBlock),
-						"block_id", blockID.Hash,
-					)
+					if cs.Logger.DebugOn() {
+						cs.Logger.Debug(
+							"valid block we do not know about; set ProposalBlock=nil",
+							"proposal", log.NewLazyBlockHash(cs.ProposalBlock),
+							"block_id", blockID.Hash,
+						)
+					}
 
 					// we're getting the wrong block
 					cs.ProposalBlock = nil
@@ -2206,12 +2217,14 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 	case cmtproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
-		cs.Logger.Debug("added vote to precommit",
-			"height", vote.Height,
-			"round", vote.Round,
-			"validator", vote.ValidatorAddress.String(),
-			"vote_timestamp", vote.Timestamp,
-			"data", precommits.LogString())
+		if cs.Logger.DebugOn() {
+			cs.Logger.Debug("added vote to precommit",
+				"height", vote.Height,
+				"round", vote.Round,
+				"validator", vote.ValidatorAddress.String(),
+				"vote_timestamp", vote.Timestamp,
+				"data", precommits.LogString())
+		}
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {

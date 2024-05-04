@@ -1332,12 +1332,14 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int32, voteType cmtproto.SignedMsgType, index int32) {
-	ps.logger.Debug("setHasVote",
-		"peerH/R",
-		log.NewLazySprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
-		"H/R",
-		log.NewLazySprintf("%d/%d", height, round),
-		"type", voteType, "index", index)
+	if ps.logger.DebugOn() {
+		ps.logger.Debug("setHasVote",
+			"peerH/R",
+			log.NewLazySprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+			"H/R",
+			log.NewLazySprintf("%d/%d", height, round),
+			"type", voteType, "index", index)
+	}
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)

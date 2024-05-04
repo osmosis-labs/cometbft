@@ -354,7 +354,9 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+	if c.Logger.DebugOn() {
+		c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+	}
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -383,7 +385,9 @@ func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+	if c.Logger.DebugOn() {
+		c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+	}
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -616,7 +620,9 @@ FOR_LOOP:
 				if err == io.EOF {
 					c.Logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
 				} else {
-					c.Logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+					if c.Logger.DebugOn() {
+						c.Logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+					}
 				}
 				c.stopForError(err)
 			}
@@ -660,7 +666,9 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
+				if c.Logger.DebugOn() {
+					c.Logger.Debug("Received bytes", "chID", channelID, "msgBytes", msgBytes)
+				}
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(channelID, msgBytes)
 			}
