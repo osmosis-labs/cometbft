@@ -1731,6 +1731,24 @@ func (cs *State) finalizeCommit(height int64) {
 		} else {
 			logger.Debug("application retain height set")
 		}
+		err = cs.blockExec.Pruner().SetTxIndexerRetainHeight(retainHeight)
+		if err != nil {
+			logger.Error("failed to set tx indexer retain height to", "retain_height", retainHeight, "err", err)
+		} else {
+			logger.Debug("tx indexer retain height set")
+		}
+		err = cs.blockExec.Pruner().SetBlockIndexerRetainHeight(retainHeight)
+		if err != nil {
+			logger.Error("failed to set block indexer retain height to", "retain_height", retainHeight, "err", err)
+		} else {
+			logger.Debug("block indexer retain height set")
+		}
+		err = cs.blockExec.Pruner().SetABCIResRetainHeight(retainHeight)
+		if err != nil {
+			logger.Error("failed to set abci res retain height to", "retain_height", retainHeight, "err", err)
+		} else {
+			logger.Debug("abci res retain height set")
+		}
 	}
 
 	// must be called before we update state

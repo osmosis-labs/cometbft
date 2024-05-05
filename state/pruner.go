@@ -339,7 +339,6 @@ func (p *Pruner) pruneBlocks() {
 			fmt.Println()
 			fmt.Println("pruneBlocks Last Retain Height: ", lastRetainHeight)
 			newRetainHeight := p.pruneBlocksToRetainHeight(lastRetainHeight)
-			fmt.Println("pruneBlocks New Retain Height: ", newRetainHeight)
 			fmt.Println("prune tx indexer")
 			p.pruneTxIndexerToRetainHeight(lastRetainHeight)
 			fmt.Println("prune block indexer")
@@ -352,6 +351,7 @@ func (p *Pruner) pruneBlocks() {
 					ToHeight:   newRetainHeight - 1,
 				})
 			}
+			fmt.Println("pruneBlocks New Retain Height: ", newRetainHeight)
 			lastRetainHeight = newRetainHeight
 			time.Sleep(p.interval)
 		}
@@ -375,21 +375,21 @@ func (p *Pruner) pruneBlocks() {
 // 	}
 // }
 
-func (p *Pruner) pruneTxIndexerToRetainHeight(targetRetainHeight int64) int64 {
-	// targetRetainHeight, err := p.GetTxIndexerRetainHeight()
-	// if err != nil {
-	// 	// Indexer retain height has not yet been set - do not log any
-	// 	// errors at this time.
-	// 	if errors.Is(err, ErrKeyNotFound) {
-	// 		return 0
-	// 	}
-	// 	p.logger.Error("Failed to get Indexer retain height", "err", err)
-	// 	return lastRetainHeight
-	// }
+func (p *Pruner) pruneTxIndexerToRetainHeight(lastRetainHeight int64) int64 {
+	targetRetainHeight, err := p.GetTxIndexerRetainHeight()
+	if err != nil {
+		// Indexer retain height has not yet been set - do not log any
+		// errors at this time.
+		if errors.Is(err, ErrKeyNotFound) {
+			return 0
+		}
+		p.logger.Error("Failed to get Indexer retain height", "err", err)
+		return lastRetainHeight
+	}
 
-	// if lastRetainHeight >= targetRetainHeight {
-	// 	return lastRetainHeight
-	// }
+	if lastRetainHeight >= targetRetainHeight {
+		return lastRetainHeight
+	}
 
 	numPrunedTxIndexer, newTxIndexerRetainHeight, err := p.txIndexer.Prune(targetRetainHeight)
 	if err != nil {
@@ -401,21 +401,21 @@ func (p *Pruner) pruneTxIndexerToRetainHeight(targetRetainHeight int64) int64 {
 	return newTxIndexerRetainHeight
 }
 
-func (p *Pruner) pruneBlockIndexerToRetainHeight(targetRetainHeight int64) int64 {
-	// targetRetainHeight, err := p.GetBlockIndexerRetainHeight()
-	// if err != nil {
-	// 	// Indexer retain height has not yet been set - do not log any
-	// 	// errors at this time.
-	// 	if errors.Is(err, ErrKeyNotFound) {
-	// 		return 0
-	// 	}
-	// 	p.logger.Error("Failed to get Indexer retain height", "err", err)
-	// 	return lastRetainHeight
-	// }
+func (p *Pruner) pruneBlockIndexerToRetainHeight(lastRetainHeight int64) int64 {
+	targetRetainHeight, err := p.GetBlockIndexerRetainHeight()
+	if err != nil {
+		// Indexer retain height has not yet been set - do not log any
+		// errors at this time.
+		if errors.Is(err, ErrKeyNotFound) {
+			return 0
+		}
+		p.logger.Error("Failed to get Indexer retain height", "err", err)
+		return lastRetainHeight
+	}
 
-	// if lastRetainHeight >= targetRetainHeight {
-	// 	return lastRetainHeight
-	// }
+	if lastRetainHeight >= targetRetainHeight {
+		return lastRetainHeight
+	}
 
 	numPrunedBlockIndexer, newBlockIndexerRetainHeight, err := p.blockIndexer.Prune(targetRetainHeight)
 	if err != nil {
