@@ -2,12 +2,12 @@ name: Protobuf Lint
 on:
   pull_request:
     paths:
-      - 'proto/**'
+      - "proto/**"
   push:
     branches:
-      - v0.38.x
+      - osmo/v0.38.x
     paths:
-      - 'proto/**'
+      - "proto/**"
 
 jobs:
   lint:
@@ -18,4 +18,4 @@ jobs:
       - uses: bufbuild/buf-setup-action@v1.31.0
       - uses: bufbuild/buf-lint-action@v1
         with:
-          input: 'proto'
+          input: "proto"
