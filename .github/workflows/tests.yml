@@ -5,7 +5,7 @@ on:
     paths:
       - "**.go"
     branches:
-      - v0.38.x
+      - osmo/v0.38.x
 
 jobs:
   tests:
