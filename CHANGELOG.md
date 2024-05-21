@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## Osmosis Specific Info
+
+This v0.38.x branch was created at the [705e5173b1cf92842110896aba0e83833fe98646](https://github.com/cometbft/cometbft/commit/705e5173b1cf92842110896aba0e83833fe98646) commit of the [v0.38.x](https://github.com/cometbft/cometbft/commits/v0.38.x/) branch. If you catch this fork up with the latest changes from upstream, please start at the commit after the one mentioned above, and work your way to the tip (or desired commit) of the upstream branch. Then, update this message with the new commit hash. Also, when you add a new PRs to this branch on Osmosis and it is not yet upstreamed, make sure you add it both directly below AND in the respective release section of this file.
+
+### Osmosis Specific PRs (should upstream)
+
+### Osmosis Specific PRs (should not upstream)
+
+* Performance (already upstreamed but not in this version)
+  * [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+  * [1c07c7c](https://github.com/osmosis-labs/cometbft/commit/1c07c7c22ae1bb77039ddc642cc706b23e17ec56) TxSearch pagination
+
+### Osmosis Specific PRs (unknown upstream status)
+
+## [Unreleased]
+
+## v26
+
+## [v0.38.x-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/TODO)
+
+### Osmosis Specific Changes
+
+* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+* [1c07c7c](https://github.com/osmosis-labs/cometbft/commit/1c07c7c22ae1bb77039ddc642cc706b23e17ec56) TxSearch pagination
+
+*****************************************************************************************
+*****************************************************************************************
+*****************************************************************************************
+*****************************************************************************************
+*****************************************************************************************
+
 ## v0.38.7
 
 *April 26, 2024*
