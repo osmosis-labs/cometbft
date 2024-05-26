@@ -8,11 +8,15 @@
 * [#76](https://github.com/osmosis-labs/cometbft/pull/76) perf(consensus): Add LRU caches for blockstore operations used in gossip
 * [#77](https://github.com/osmosis-labs/cometbft/pull/77) perf(consensus): Make every gossip thread use its own randomness instance, reducing mutex contention 
 
+## v0.37.4-v25-osmo-4
+
+* [#69](https://github.com/osmosis-labs/cometbft/pull/69) perf: Make mempool update async from block.Commit (#3008)
+* [#67](https://github.com/osmosis-labs/cometbft/pull/67) fix: TimeoutTicker returns wrong value/timeout pair when timeouts are…
+
 ## v0.37.4-v25-osmo-3
 
 * [#61](https://github.com/osmosis-labs/cometbft/pull/61) refactor(p2p/connection): Slight refactor to sendManyPackets that helps highlight performance improvements (backport #2953) (#2978)
 * [#62](https://github.com/osmosis-labs/cometbft/pull/62) perf(consensus/blockstore): Remove validate basic call from LoadBlock
-* [#71](https://github.com/osmosis-labs/cometbft/pull/71) perf(consensus): Make mempool update async from Commit
 * [#59](https://github.com/osmosis-labs/cometbft/pull/59) `[blockstore]` Remove a redundant `Header.ValidateBasic` call in `LoadBlockMeta`, 75% reducing this time. ([\#2964](https://github.com/cometbft/cometbft/pull/2964))
 * [#59](https://github.com/osmosis-labs/cometbft/pull/59) `[p2p/conn]` Speedup connection.WritePacketMsgTo, by reusing internal buffers rather than re-allocating. ([\#2986](https://github.com/cometbft/cometbft/pull/2986))
 
