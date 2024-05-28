@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-<<<<<<< HEAD
-=======
+* [#73](https://github.com/osmosis-labs/cometbft/pull/73) perf(consensus/blockexec): Add simplistic block validation cache
+* [#74](https://github.com/osmosis-labs/cometbft/pull/74) perf(consensus): Minor speedup to mark late vote metrics
+* [#75](https://github.com/osmosis-labs/cometbft/pull/75) perf(p2p): 4% speedup to readMsg by removing one allocation
+
 ## v0.37.4-v25-osmo-3
 
 * [#61](https://github.com/osmosis-labs/cometbft/pull/61) refactor(p2p/connection): Slight refactor to sendManyPackets that helps highlight performance improvements (backport #2953) (#2978)
@@ -11,11 +13,7 @@
 * [#71](https://github.com/osmosis-labs/cometbft/pull/71) perf(consensus): Make mempool update async from Commit
 * [#73](https://github.com/osmosis-labs/cometbft/pull/73) perf(consensus/blockexec): Add simplistic block validation cache
 * [#74](https://github.com/osmosis-labs/cometbft/pull/74) perf(consensus): Minor speedup to mark late vote metrics
-* [#59](https://github.com/osmosis-labs/cometbft/pull/59) `[blockstore]` Remove a redundant `Header.ValidateBasic` call in `LoadBlockMeta`, 75% reducing this time. ([\#2964](https://github.com/cometbft/cometbft/pull/2964))
-* [#59](https://github.com/osmosis-labs/cometbft/pull/59) `[p2p/conn]` Speedup connection.WritePacketMsgTo, by reusing internal buffers rather than re-allocating. ([\#2986](https://github.com/cometbft/cometbft/pull/2986))
 
-
->>>>>>> 6392e6433 (Add changelog)
 ## v0.37.4-v25-osmo-2 & v0.37.4-v24-osmo-5
 
 * [#35](https://github.com/osmosis-labs/cometbft/pull/35) Handle last element in PickRandom
