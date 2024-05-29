@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+<<<<<<< HEAD
+=======
+* [#83](https://github.com/osmosis-labs/cometbft/pull/83)  perf(types): 3x speedup MakePartSet (#3117)
+
+
+## v0.37.4-v25-osmo-5
+>>>>>>> 104624c94 (Add changelog)
 
 * [#73](https://github.com/osmosis-labs/cometbft/pull/73) perf(consensus/blockexec): Add simplistic block validation cache
 * [#74](https://github.com/osmosis-labs/cometbft/pull/74) perf(consensus): Minor speedup to mark late vote metrics
