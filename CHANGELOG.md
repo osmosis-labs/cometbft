@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [#83](https://github.com/osmosis-labs/cometbft/pull/83)  perf(types): 3x speedup MakePartSet (#3117)
+* [#84](https://github.com/osmosis-labs/cometbft/pull/84)  Comment out expensive debug logs
 
 
 ## v0.37.4-v25-osmo-5
