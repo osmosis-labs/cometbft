@@ -262,9 +262,9 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
-			conR.conS.mtx.Lock()
+			conR.conS.mtx.RLock()
 			initialHeight := conR.conS.state.InitialHeight
-			conR.conS.mtx.Unlock()
+			conR.conS.mtx.RUnlock()
 			if err = msg.ValidateHeight(initialHeight); err != nil {
 				conR.Logger.Error("Peer sent us invalid msg", "peer", e.Src, "msg", msg, "err", err)
 				conR.Switch.StopPeerForError(e.Src, err)
@@ -277,9 +277,9 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 			ps.ApplyHasVoteMessage(msg)
 		case *VoteSetMaj23Message:
 			cs := conR.conS
-			cs.mtx.Lock()
+			cs.mtx.RLock()
 			height, votes := cs.Height, cs.Votes
-			cs.mtx.Unlock()
+			cs.mtx.RUnlock()
 			if height != msg.Height {
 				return
 			}
@@ -366,9 +366,9 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		switch msg := msg.(type) {
 		case *VoteSetBitsMessage:
 			cs := conR.conS
-			cs.mtx.Lock()
+			cs.mtx.RLock()
 			height, votes := cs.Height, cs.Votes
-			cs.mtx.Unlock()
+			cs.mtx.RUnlock()
 
 			if height == msg.Height {
 				var ourVotes *bits.BitArray
