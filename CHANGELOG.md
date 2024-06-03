@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v0.37.4-v25-osmo-6
 
 * [#83](https://github.com/osmosis-labs/cometbft/pull/83)  perf(types): 3x speedup MakePartSet (#3117)
 * [#85](https://github.com/osmosis-labs/cometbft/pull/85)  perf(flowrate): Speedup flowrate.Clock (#3016)
@@ -8,6 +8,7 @@
 * [#91](https://github.com/osmosis-labs/cometbft/pull/91)  perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
 * [#93](https://github.com/osmosis-labs/cometbft/pull/93)  perf(consensus): Make some consensus reactor messages take RLock's not WLock's (#3159)
 * [#95](https://github.com/osmosis-labs/cometbft/pull/95)  perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
+* [#97](https://github.com/osmosis-labs/cometbft/pull/97)   perf(p2p/connection): Lower wasted re-allocations in sendRoutine (#2986)
 
 
 ## v0.37.4-v25-osmo-5
