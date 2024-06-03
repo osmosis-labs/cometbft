@@ -6,6 +6,7 @@
 * [#85](https://github.com/osmosis-labs/cometbft/pull/85)  perf(flowrate): Speedup flowrate.Clock (#3016)
 * [#86](https://github.com/osmosis-labs/cometbft/pull/86)  Comment out expensive debug logs
 * [#91](https://github.com/osmosis-labs/cometbft/pull/91)  perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
+* [#93](https://github.com/osmosis-labs/cometbft/pull/93)  perf(consensus): Make some consensus reactor messages take RLock's not WLock's (#3159)
 
 ## v0.37.4-v25-osmo-5
 
