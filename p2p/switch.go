@@ -262,10 +262,7 @@ func (sw *Switch) OnStop() {
 // Peers
 
 // BroadcastEnvelope runs a go routine for each attempted send, which will block trying
-// to send for defaultSendTimeoutSeconds. Returns a channel which receives
-// success values for each attempted send (false if times out). Channel will be
-// closed once msg bytes are sent to all peers (or time out).
-// BroadcastEnvelopes sends to the peers using the SendEnvelope method.
+// to send for defaultSendTimeoutSeconds.
 //
 // NOTE: BroadcastEnvelope uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) BroadcastEnvelope(e Envelope) {
