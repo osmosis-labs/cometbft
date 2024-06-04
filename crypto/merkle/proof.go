@@ -77,7 +77,8 @@ func (sp *Proof) Verify(rootHash []byte, leaf []byte) error {
 
 // Compute the root hash given a leaf hash.  Panics in case of errors.
 func (sp *Proof) ComputeRootHash() []byte {
-	computedHash, err := sp.computeRootHash()
+	hash := tmhash.New()
+	computedHash, err := sp.computeRootHash(hash)
 	if err != nil {
 		panic(fmt.Errorf("ComputeRootHash errored %w", err))
 	}

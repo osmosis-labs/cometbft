@@ -45,6 +45,7 @@ const (
 	labelSecretConnectionMac     = "SECRET_CONNECTION_MAC"
 
 	defaultWriteBufferSize = 128 * 1024
+	defaultReadBufferSize  = 65536
 )
 
 var (
