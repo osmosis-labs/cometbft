@@ -10,7 +10,8 @@
 * [#95](https://github.com/osmosis-labs/cometbft/pull/95)  perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
 * [#97](https://github.com/osmosis-labs/cometbft/pull/97)   perf(p2p/connection): Lower wasted re-allocations in sendRoutine (#2986)
 * [#99](https://github.com/osmosis-labs/cometbft/pull/99)   perf(consensus): Reuse an internal buffer for block building (#3162)
-* [#97](https://github.com/osmosis-labs/cometbft/pull/101)  perf(consensus): Run broadcast routines out of process (speeds up consensus mutex) #3180
+* [#101](https://github.com/osmosis-labs/cometbft/pull/101)  perf(consensus): Run broadcast routines out of process (speeds up consensus mutex) #3180
+* [#102](https://github.com/osmosis-labs/cometbft/pull/102)  perf(p2p): Remove broadcast return channel #3182 
 
 
 ## v0.37.4-v25-osmo-5

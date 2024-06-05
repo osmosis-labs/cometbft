@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/cometbft/cometbft/config"
@@ -263,34 +262,21 @@ func (sw *Switch) OnStop() {
 // Peers
 
 // BroadcastEnvelope runs a go routine for each attempted send, which will block trying
-// to send for defaultSendTimeoutSeconds. Returns a channel which receives
-// success values for each attempted send (false if times out). Channel will be
-// closed once msg bytes are sent to all peers (or time out).
-// BroadcastEnvelopes sends to the peers using the SendEnvelope method.
+// to send for defaultSendTimeoutSeconds.
 //
 // NOTE: BroadcastEnvelope uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
+func (sw *Switch) BroadcastEnvelope(e Envelope) {
 	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
 
 	peers := sw.peers.List()
-	var wg sync.WaitGroup
-	wg.Add(len(peers))
-	successChan := make(chan bool, len(peers))
-
 	for _, peer := range peers {
 		go func(p Peer) {
-			defer wg.Done()
+			// TODO: We don't use the success value. Should most behavior
+			// really be TrySend?
 			success := p.SendEnvelope(e)
-			successChan <- success
+			_ = success
 		}(peer)
 	}
-
-	go func() {
-		wg.Wait()
-		close(successChan)
-	}()
-
-	return successChan
 }
 
 // NumPeers returns the count of outbound/inbound and outbound-dialing peers.
