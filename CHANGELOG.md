@@ -12,6 +12,8 @@
 * [#99](https://github.com/osmosis-labs/cometbft/pull/99)   perf(consensus): Reuse an internal buffer for block building (#3162)
 * [#101](https://github.com/osmosis-labs/cometbft/pull/101)  perf(consensus): Run broadcast routines out of process (speeds up consensus mutex) #3180
 * [#102](https://github.com/osmosis-labs/cometbft/pull/102)  perf(p2p): Remove broadcast return channel #3182 
+* [#105](https://github.com/osmosis-labs/cometbft/pull/105)  perf(p2p)!: Remove PeerSendBytesTotal metric #3184
+
 
 
 ## v0.37.4-v25-osmo-5
