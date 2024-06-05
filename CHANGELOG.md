@@ -20,6 +20,7 @@ It also includes a few other bug fixes and performance improvements.
   ([\#3544](https://github.com/cometbft/cometbft/issues/3544))
 - [#91](https://github.com/osmosis-labs/cometbft/pull/91) perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
 * [#109](https://github.com/osmosis-labs/cometbft/pull/109)  perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
+* [#105](https://github.com/osmosis-labs/cometbft/pull/105) perf(p2p)!: Remove PeerSendBytesTotal metric #3184
 
 
 ## v0.38.10
