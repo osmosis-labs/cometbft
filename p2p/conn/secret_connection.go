@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/cipher"
 	crand "crypto/rand"
@@ -39,6 +40,12 @@ const (
 	aeadKeySize      = chacha20poly1305.KeySize
 	aeadNonceSize    = chacha20poly1305.NonceSize
 
+	// Buffer size for network reads. A block part can be up to 65536 bytes.
+	// We use 1.5 times that to add lots of room for overheads / buffer
+	// being at different offsets.
+	// This buffer is for lowering the number of syscall reads we do.
+	connBufferSize = 65536 * 1.5
+
 	labelEphemeralLowerPublicKey = "EPHEMERAL_LOWER_PUBLIC_KEY"
 	labelEphemeralUpperPublicKey = "EPHEMERAL_UPPER_PUBLIC_KEY"
 	labelDHSecret                = "DH_SECRET"
@@ -67,7 +74,9 @@ type SecretConnection struct {
 	sendAead cipher.AEAD
 
 	remPubKey crypto.PubKey
-	conn      io.ReadWriteCloser
+
+	writeConn io.WriteCloser
+	readConn  io.Reader
 
 	// net.Conn must be thread safe:
 	// https://golang.org/pkg/net/#Conn.
@@ -143,8 +152,17 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		return nil, errors.New("invalid receive SecretConnection Key")
 	}
 
+	// Sign the challenge bytes for authentication.
+	locSignature, err := signChallenge(&challenge, locPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	bufferedReader := bufio.NewReaderSize(conn, connBufferSize)
+
 	sc := &SecretConnection{
-		conn:       conn,
+		writeConn:  conn,
+		readConn:   bufferedReader,
 		recvBuffer: nil,
 		recvNonce:  new([aeadNonceSize]byte),
 		sendNonce:  new([aeadNonceSize]byte),
@@ -152,17 +170,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		sendAead:   sendAead,
 	}
 
-	// Sign the challenge bytes for authentication.
-	locSignature, err := signChallenge(&challenge, locPrivKey)
-	if err != nil {
-		return nil, err
-	}
-
+	// fmt.Println("try share auth sig")
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Println("shared auth sig")
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
 	if _, ok := remPubKey.(ed25519.PubKey); !ok {
@@ -213,7 +227,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 			incrNonce(sc.sendNonce)
 			// end encryption
 
-			_, err = sc.conn.Write(sealedFrame)
+			_, err = sc.writeConn.Write(sealedFrame)
 			if err != nil {
 				return err
 			}
@@ -230,6 +244,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	sc.recvMtx.Lock()
 	defer sc.recvMtx.Unlock()
+	// fmt.Println(sc.recvBuffer)
 
 	// read off and update the recvBuffer, if non-empty
 	if 0 < len(sc.recvBuffer) {
@@ -241,7 +256,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	// read off the conn
 	var sealedFrame = pool.Get(aeadSizeOverhead + totalFrameSize)
 	defer pool.Put(sealedFrame)
-	_, err = io.ReadFull(sc.conn, sealedFrame)
+	_, err = io.ReadFull(sc.readConn, sealedFrame)
 	if err != nil {
 		return
 	}
@@ -273,17 +288,18 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 }
 
 // Implements net.Conn
-func (sc *SecretConnection) Close() error                  { return sc.conn.Close() }
-func (sc *SecretConnection) LocalAddr() net.Addr           { return sc.conn.(net.Conn).LocalAddr() }
-func (sc *SecretConnection) RemoteAddr() net.Addr          { return sc.conn.(net.Conn).RemoteAddr() }
-func (sc *SecretConnection) SetDeadline(t time.Time) error { return sc.conn.(net.Conn).SetDeadline(t) }
+func (sc *SecretConnection) Close() error         { return sc.writeConn.Close() }
+func (sc *SecretConnection) LocalAddr() net.Addr  { return sc.writeConn.(net.Conn).LocalAddr() }
+func (sc *SecretConnection) RemoteAddr() net.Addr { return sc.writeConn.(net.Conn).RemoteAddr() }
+func (sc *SecretConnection) SetDeadline(t time.Time) error {
+	return sc.writeConn.(net.Conn).SetDeadline(t)
+}
 func (sc *SecretConnection) SetReadDeadline(t time.Time) error {
-	return sc.conn.(net.Conn).SetReadDeadline(t)
+	return sc.writeConn.(net.Conn).SetReadDeadline(t)
 }
 func (sc *SecretConnection) SetWriteDeadline(t time.Time) error {
-	return sc.conn.(net.Conn).SetWriteDeadline(t)
+	return sc.writeConn.(net.Conn).SetWriteDeadline(t)
 }
-
 func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
 	// TODO: Probably not a problem but ask Tony: different from the rust implementation (uses x25519-dalek),
