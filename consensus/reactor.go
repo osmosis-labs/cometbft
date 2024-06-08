@@ -267,9 +267,9 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
 			// TODO: Set this up on load
-			conR.conS.mtx.RLock()
+			conR.rsMtx.RLock()
 			initialHeight := conR.conS.state.InitialHeight
-			conR.conS.mtx.RUnlock()
+			conR.rsMtx.RUnlock()
 			if err = msg.ValidateHeight(initialHeight); err != nil {
 				conR.Logger.Error("Peer sent us invalid msg", "peer", e.Src, "msg", msg, "err", err)
 				conR.Switch.StopPeerForError(e.Src, err)
@@ -368,7 +368,6 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		}
 		switch msg := msg.(type) {
 		case *VoteSetBitsMessage:
-
 			conR.rsMtx.RLock()
 			height, votes := conR.rs.Height, conR.rs.Votes
 			conR.rsMtx.RUnlock()
@@ -551,6 +550,7 @@ func (conR *Reactor) updateRoundStateNoCsLock() {
 	rs := conR.conS.getRoundState()
 	conR.rsMtx.Lock()
 	conR.rs = rs
+	conR.initialHeight = conR.conS.state.InitialHeight
 	conR.rsMtx.Unlock()
 }
 
