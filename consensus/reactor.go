@@ -47,8 +47,9 @@ type Reactor struct {
 	waitSync bool
 	eventBus *types.EventBus
 
-	rsMtx sync.RWMutex
-	rs    *cstypes.RoundState
+	rsMtx         cmtsync.RWMutex
+	rs            *cstypes.RoundState
+	initialHeight int64 // under rsMtx
 
 	Metrics *Metrics
 }
@@ -61,7 +62,7 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 	conR := &Reactor{
 		conS:     consensusState,
 		waitSync: waitSync,
-		rsMtx:    sync.RWMutex{},
+		rsMtx:    cmtsync.RWMutex{},
 		rs:       consensusState.GetRoundState(),
 		Metrics:  NopMetrics(),
 	}
@@ -280,7 +281,9 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
 		case *VoteSetMaj23Message:
+			conR.rsMtx.RLock()
 			height, votes := conR.rs.Height, conR.rs.Votes
+			conR.rsMtx.RUnlock()
 			if height != msg.Height {
 				return
 			}
@@ -345,7 +348,10 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		switch msg := msg.(type) {
 		case *VoteMessage:
 			cs := conR.conS
+
+			conR.rsMtx.RLock()
 			height, valSize, lastCommitSize := conR.rs.Height, conR.rs.Validators.Size(), conR.rs.LastCommit.Size()
+			conR.rsMtx.RUnlock()
 			ps.SetHasVoteFromPeer(msg.Vote, height, valSize, lastCommitSize)
 
 			cs.peerMsgQueue <- msgInfo{msg, e.Src.ID()}
@@ -362,7 +368,10 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		}
 		switch msg := msg.(type) {
 		case *VoteSetBitsMessage:
+
+			conR.rsMtx.RLock()
 			height, votes := conR.rs.Height, conR.rs.Votes
+			conR.rsMtx.RUnlock()
 
 			if height == msg.Height {
 				var ourVotes *bits.BitArray
