@@ -280,10 +280,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		case *HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
 		case *VoteSetMaj23Message:
-			cs := conR.conS
-			cs.mtx.RLock()
-			height, votes := cs.Height, cs.Votes
-			cs.mtx.RUnlock()
+			height, votes := conR.rs.Height, conR.rs.Votes
 			if height != msg.Height {
 				return
 			}
@@ -348,9 +345,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		switch msg := msg.(type) {
 		case *VoteMessage:
 			cs := conR.conS
-			cs.mtx.RLock()
-			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
-			cs.mtx.RUnlock()
+			height, valSize, lastCommitSize := conR.rs.Height, conR.rs.Validators.Size(), conR.rs.LastCommit.Size()
 			ps.SetHasVoteFromPeer(msg.Vote, height, valSize, lastCommitSize)
 
 			cs.peerMsgQueue <- msgInfo{msg, e.Src.ID()}
@@ -367,10 +362,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		}
 		switch msg := msg.(type) {
 		case *VoteSetBitsMessage:
-			cs := conR.conS
-			cs.mtx.RLock()
-			height, votes := cs.Height, cs.Votes
-			cs.mtx.RUnlock()
+			height, votes := conR.rs.Height, conR.rs.Votes
 
 			if height == msg.Height {
 				var ourVotes *bits.BitArray
