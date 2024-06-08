@@ -46,7 +46,9 @@ type Reactor struct {
 	mtx      cmtsync.RWMutex
 	waitSync bool
 	eventBus *types.EventBus
-	rs       *cstypes.RoundState
+
+	rsMtx sync.RWMutex
+	rs    *cstypes.RoundState
 
 	Metrics *Metrics
 }
@@ -59,6 +61,7 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 	conR := &Reactor{
 		conS:     consensusState,
 		waitSync: waitSync,
+		rsMtx:    sync.RWMutex{},
 		rs:       consensusState.GetRoundState(),
 		Metrics:  NopMetrics(),
 	}
@@ -262,6 +265,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
+			// TODO: Set this up on load
 			conR.conS.mtx.RLock()
 			initialHeight := conR.conS.state.InitialHeight
 			conR.conS.mtx.RUnlock()
@@ -415,6 +419,7 @@ func (conR *Reactor) subscribeToBroadcastEvents() {
 	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
 		func(data cmtevents.EventData) {
 			conR.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
+			conR.updateRoundStateNoCsLock()
 		}); err != nil {
 		conR.Logger.Error("Error adding listener for events", "err", err)
 	}
@@ -429,6 +434,7 @@ func (conR *Reactor) subscribeToBroadcastEvents() {
 	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
 		func(data cmtevents.EventData) {
 			conR.broadcastHasVoteMessage(data.(*types.Vote))
+			conR.updateRoundStateNoCsLock()
 		}); err != nil {
 		conR.Logger.Error("Error adding listener for events", "err", err)
 	}
@@ -538,6 +544,13 @@ func (conR *Reactor) updateRoundStateRoutine() {
 		conR.rs = rs
 		conR.mtx.Unlock()
 	}
+}
+
+func (conR *Reactor) updateRoundStateNoCsLock() {
+	rs := conR.conS.getRoundState()
+	conR.rsMtx.Lock()
+	conR.rs = rs
+	conR.rsMtx.Unlock()
 }
 
 func (conR *Reactor) getRoundState() *cstypes.RoundState {
