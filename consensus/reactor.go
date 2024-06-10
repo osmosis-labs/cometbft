@@ -47,9 +47,12 @@ type Reactor struct {
 	waitSync bool
 	eventBus *types.EventBus
 
-	rsMtx         cmtsync.RWMutex
-	rs            *cstypes.RoundState
-	initialHeight int64 // under rsMtx
+	rsMtx cmtsync.RWMutex
+	rs    *cstypes.RoundState
+	// initialHeight is protected under rsMtx
+	// we currently update it whenever we update rs,
+	// however we only need to update it on prunes.
+	initialHeight int64
 
 	Metrics *Metrics
 }
