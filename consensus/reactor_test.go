@@ -311,15 +311,22 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore, func(c *cfg.Config) {
+		c.Consensus.TimeoutPropose = 3000 * time.Millisecond
+		c.Consensus.TimeoutPrevote = 1000 * time.Millisecond
+		c.Consensus.TimeoutPrecommit = 1000 * time.Millisecond
+	})
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(j int) {
-		<-blocksSubs[j].Out()
-	}, css)
+	// wait till we make a few blocks
+	numBlocks := 5
+	for i := 0; i < numBlocks; i++ {
+		timeoutWaitGroup(t, N, func(j int) {
+			<-blocksSubs[j].Out()
+		}, css)
+	}
 
 	// Get peer
 	peer := reactors[1].Switch.Peers().List()[0]

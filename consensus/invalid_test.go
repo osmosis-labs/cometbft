@@ -2,7 +2,9 @@ package consensus
 
 import (
 	"testing"
+	"time"
 
+	cfg "github.com/cometbft/cometbft/config"
 	"github.com/cometbft/cometbft/libs/bytes"
 	"github.com/cometbft/cometbft/libs/log"
 	cmtrand "github.com/cometbft/cometbft/libs/rand"
@@ -19,7 +21,11 @@ import (
 // Ensure a testnet makes blocks
 func TestReactorInvalidPrecommit(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore, func(c *cfg.Config) {
+		c.Consensus.TimeoutPropose = 3000 * time.Millisecond
+		c.Consensus.TimeoutPrevote = 1000 * time.Millisecond
+		c.Consensus.TimeoutPrecommit = 1000 * time.Millisecond
+	})
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -40,13 +46,13 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// and otherwise disable the priv validator
 	byzVal.mtx.Lock()
 	pv := byzVal.privValidator
-	byzVal.doPrevote = func(height int64, round int32) {
-		invalidDoPrevoteFunc(t, height, round, byzVal, byzR.Switch, pv)
+	byzVal.doPrevote = func(int64, int32) {
+		invalidDoPrevoteFunc(t, byzVal, byzR.Switch, pv)
 	}
 	byzVal.mtx.Unlock()
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	// wait for a bunch of blocks
+	// wait for a bunch of blocks, from each validator
 	// TODO: make this tighter by ensuring the halt happens by block 2
 	for i := 0; i < 10; i++ {
 		timeoutWaitGroup(t, N, func(j int) {
@@ -55,7 +61,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	}
 }
 
-func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch, pv types.PrivValidator) {
+func invalidDoPrevoteFunc(t *testing.T, cs *State, sw *p2p.Switch, pv types.PrivValidator) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
