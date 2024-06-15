@@ -535,10 +535,12 @@ func (conR *Reactor) updateRoundStateRoutine() {
 		if !conR.IsRunning() {
 			return
 		}
-		rs := conR.conS.GetRoundState()
+		conR.conS.mtx.RLock()
+		rs, initialHeight := conR.conS.getRoundState(), conR.conS.state.InitialHeight
+		conR.conS.mtx.RUnlock()
 		conR.mtx.Lock()
 		conR.rs = rs
-		conR.initialHeight = conR.conS.state.InitialHeight
+		conR.initialHeight = initialHeight
 		conR.mtx.Unlock()
 	}
 }
