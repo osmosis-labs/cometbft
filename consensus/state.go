@@ -1972,7 +1972,7 @@ func allowProcessingProposalBlockPart(msg *BlockPartMessage, logger log.Logger, 
 		return false
 	}
 
-	if csBlockParts.IsComplete() || csBlockParts.GetPart(int(part.Index)) != nil {
+	if csBlockParts.IsCompleteMtx() || csBlockParts.GetPart(int(part.Index)) != nil {
 		return false
 	}
 
