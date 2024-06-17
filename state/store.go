@@ -466,26 +466,20 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *cmtstate.ABC
 		if tx != nil {
 			if store.MaxEventSize > 0 {
 				totalEventSize := 0
-				exceedsMaxSize := false
 				for _, ev := range tx.Events {
 					for _, attr := range ev.Attributes {
 						totalEventSize += len([]byte(attr.Key)) + len([]byte(attr.Value))
-						fmt.Println("EmitEvent totalEventSize", totalEventSize)
 						if totalEventSize > store.MaxEventSize {
-							exceedsMaxSize = true
+							tx.Events = nil
 							break
 						}
 					}
-					if exceedsMaxSize {
+					if tx.Events == nil {
 						break
 					}
 				}
-				if !exceedsMaxSize {
-					dtxs = append(dtxs, tx)
-				}
-			} else {
-				dtxs = append(dtxs, tx)
 			}
+			dtxs = append(dtxs, tx)
 		}
 	}
 	abciResponses.DeliverTxs = dtxs
