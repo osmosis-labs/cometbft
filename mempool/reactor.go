@@ -24,6 +24,8 @@ type Reactor struct {
 	mempool *CListMempool
 	ids     *mempoolIDs
 
+	peerTxProcesserChan chan *peerIncomingTx
+
 	// Semaphores to keep track of how many connections to peers are active for broadcasting
 	// transactions. Each semaphore has a capacity that puts an upper bound on the number of
 	// connections for different groups of peers.
@@ -41,6 +43,7 @@ func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
 	memR.BaseReactor = *p2p.NewBaseReactor("Mempool", memR)
 	memR.activePersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToPersistentPeers))
 	memR.activeNonPersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToNonPersistentPeers))
+	memR.peerTxProcesserChan = make(chan *peerIncomingTx, 10000)
 
 	return memR
 }
@@ -62,7 +65,13 @@ func (memR *Reactor) OnStart() error {
 	if !memR.config.Broadcast {
 		memR.Logger.Info("Tx broadcasting is disabled")
 	}
+
+	go memR.incomingPacketProcessor()
 	return nil
+}
+
+func (memR *Reactor) OnStop() {
+	close(memR.peerTxProcesserChan)
 }
 
 // GetChannels implements Reactor by returning the list of channels for this
@@ -134,6 +143,11 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, _ interface{}) {
 	// broadcast routine checks if peer is gone and returns
 }
 
+type peerIncomingTx struct {
+	tx   *protomem.Txs
+	peer p2p.Peer
+}
+
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *Reactor) Receive(e p2p.Envelope) {
@@ -167,6 +181,36 @@ func (memR *Reactor) Receive(e p2p.Envelope) {
 	}
 
 	// broadcasting happens from go routines per peer
+}
+
+func (memR *Reactor) incomingPacketProcessor() {
+	for {
+		pit, chanOpen := <-memR.peerTxProcesserChan
+		if !chanOpen {
+			break
+		}
+
+		protoTxs := pit.tx.GetTxs()
+		if len(protoTxs) == 0 {
+			memR.Logger.Error("received empty txs from peer", "src", pit.peer)
+			continue
+		}
+		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(pit.peer)}
+		if pit.peer != nil {
+			txInfo.SenderP2PID = pit.peer.ID()
+		}
+
+		var err error
+		for _, tx := range protoTxs {
+			ntx := types.Tx(tx)
+			err = memR.mempool.CheckTx(ntx, nil, txInfo)
+			if errors.Is(err, mempool.ErrTxInCache) {
+				memR.Logger.Debug("Tx already exists in cache", "tx", ntx.String())
+			} else if err != nil {
+				memR.Logger.Info("Could not check tx", "tx", ntx.String(), "err", err)
+			}
+		}
+	}
 }
 
 // PeerState describes the state of a peer.
