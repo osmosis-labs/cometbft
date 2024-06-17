@@ -1,6 +1,13 @@
 # CHANGELOG
 
-## v0.37.4-v25-osmo-6
+## v0.37.4-v25-osmo-8
+
+* [#108](https://github.com/osmosis-labs/cometbft/pull/108) perf(consensus): Make some consensus reactor messages take RLock's not WLock's (#3211)
+* [#108](https://github.com/osmosis-labs/cometbft/pull/108) perf(consensus): Make late votes outside of last block commits not get to peerMsgQueue (#3157)
+* [#108](https://github.com/osmosis-labs/cometbft/pull/108)  perf(consensus): Make reactor check for duplicate/old block parts (#3161)
+* [#109](https://github.com/osmosis-labs/cometbft/pull/109)  perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
+
+## v0.37.4-v25-osmo-7
 
 * [#83](https://github.com/osmosis-labs/cometbft/pull/83)  perf(types): 3x speedup MakePartSet (#3117)
 * [#85](https://github.com/osmosis-labs/cometbft/pull/85)  perf(flowrate): Speedup flowrate.Clock (#3016)

@@ -26,6 +26,8 @@ type Reactor struct {
 	mempool *CListMempool
 	ids     *mempoolIDs
 
+	peerTxProcesserChan chan *peerIncomingTx
+
 	// Semaphores to keep track of how many connections to peers are active for broadcasting
 	// transactions. Each semaphore has a capacity that puts an upper bound on the number of
 	// connections for different groups of peers.
@@ -106,6 +108,7 @@ func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
 	memR.BaseReactor = *p2p.NewBaseReactor("Mempool", memR)
 	memR.activePersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToPersistentPeers))
 	memR.activeNonPersistentPeersSemaphore = semaphore.NewWeighted(int64(memR.config.ExperimentalMaxGossipConnectionsToNonPersistentPeers))
+	memR.peerTxProcesserChan = make(chan *peerIncomingTx, 10000)
 
 	return memR
 }
@@ -127,7 +130,13 @@ func (memR *Reactor) OnStart() error {
 	if !memR.config.Broadcast {
 		memR.Logger.Info("Tx broadcasting is disabled")
 	}
+
+	go memR.incomingPacketProcessor()
 	return nil
+}
+
+func (memR *Reactor) OnStop() {
+	close(memR.peerTxProcesserChan)
 }
 
 // GetChannels implements Reactor by returning the list of channels for this
@@ -199,20 +208,44 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	// broadcast routine checks if peer is gone and returns
 }
 
+type peerIncomingTx struct {
+	tx   *protomem.Txs
+	peer p2p.Peer
+}
+
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 	switch msg := e.Message.(type) {
 	case *protomem.Txs:
-		protoTxs := msg.GetTxs()
-		if len(protoTxs) == 0 {
-			memR.Logger.Error("received empty txs from peer", "src", e.Src)
-			return
+		pit := &peerIncomingTx{
+			tx:   msg,
+			peer: e.Src,
 		}
-		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
-		if e.Src != nil {
-			txInfo.SenderP2PID = e.Src.ID()
+		memR.peerTxProcesserChan <- pit
+	default:
+		memR.Logger.Error("unknown message type", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
+		memR.Switch.StopPeerForError(e.Src, fmt.Errorf("mempool cannot handle message of type: %T", e.Message))
+		return
+	}
+}
+
+func (memR *Reactor) incomingPacketProcessor() {
+	for {
+		pit, chanOpen := <-memR.peerTxProcesserChan
+		if !chanOpen {
+			break
+		}
+
+		protoTxs := pit.tx.GetTxs()
+		if len(protoTxs) == 0 {
+			memR.Logger.Error("received empty txs from peer", "src", pit.peer)
+			continue
+		}
+		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(pit.peer)}
+		if pit.peer != nil {
+			txInfo.SenderP2PID = pit.peer.ID()
 		}
 
 		var err error
@@ -225,13 +258,7 @@ func (memR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 				memR.Logger.Info("Could not check tx", "tx", ntx.String(), "err", err)
 			}
 		}
-	default:
-		memR.Logger.Error("unknown message type", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
-		memR.Switch.StopPeerForError(e.Src, fmt.Errorf("mempool cannot handle message of type: %T", e.Message))
-		return
 	}
-
-	// broadcasting happens from go routines per peer
 }
 
 // PeerState describes the state of a peer.
