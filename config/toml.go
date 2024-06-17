@@ -517,6 +517,8 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 # reindex events in the command-line tool.
 discard_abci_responses = {{ .Storage.DiscardABCIResponses}}
 
+max_event_size = {{ .Storage.MaxEventSize }}
+
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
 #######################################################

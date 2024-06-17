@@ -94,6 +94,7 @@ type StoreOptions struct {
 	// the store will maintain only the response object from the latest
 	// height.
 	DiscardABCIResponses bool
+	MaxEventSize         int
 }
 
 var _ Store = (*dbStore)(nil)
@@ -463,7 +464,28 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *cmtstate.ABC
 	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
 		if tx != nil {
-			dtxs = append(dtxs, tx)
+			if store.MaxEventSize > 0 {
+				totalEventSize := 0
+				exceedsMaxSize := false
+				for _, ev := range tx.Events {
+					for _, attr := range ev.Attributes {
+						totalEventSize += len([]byte(attr.Key)) + len([]byte(attr.Value))
+						fmt.Println("EmitEvent totalEventSize", totalEventSize)
+						if totalEventSize > store.MaxEventSize {
+							exceedsMaxSize = true
+							break
+						}
+					}
+					if exceedsMaxSize {
+						break
+					}
+				}
+				if !exceedsMaxSize {
+					dtxs = append(dtxs, tx)
+				}
+			} else {
+				dtxs = append(dtxs, tx)
+			}
 		}
 	}
 	abciResponses.DeliverTxs = dtxs

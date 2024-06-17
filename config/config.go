@@ -1181,6 +1181,7 @@ type StorageConfig struct {
 	// required for `/block_results` RPC queries, and to reindex events in the
 	// command-line tool.
 	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
+	MaxEventSize         int  `mapstructure:"max_event_size"`
 }
 
 // DefaultStorageConfig returns the default configuration options relating to
@@ -1188,6 +1189,7 @@ type StorageConfig struct {
 func DefaultStorageConfig() *StorageConfig {
 	return &StorageConfig{
 		DiscardABCIResponses: false,
+		MaxEventSize:         0,
 	}
 }
 
@@ -1196,6 +1198,7 @@ func DefaultStorageConfig() *StorageConfig {
 func TestStorageConfig() *StorageConfig {
 	return &StorageConfig{
 		DiscardABCIResponses: false,
+		MaxEventSize:         0,
 	}
 }
 

@@ -91,6 +91,7 @@ func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store,
 	}
 	stateStore := state.NewStore(stateDB, state.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		MaxEventSize:         config.Storage.MaxEventSize,
 	})
 
 	return blockStore, stateStore, nil

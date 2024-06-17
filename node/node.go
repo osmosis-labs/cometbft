@@ -229,6 +229,7 @@ func BootstrapState(ctx context.Context, config *cfg.Config, dbProvider DBProvid
 
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		MaxEventSize:         config.Storage.MaxEventSize,
 	})
 
 	defer func() {
@@ -563,6 +564,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	evidenceLogger := logger.With("module", "evidence")
 	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		MaxEventSize:         config.Storage.MaxEventSize,
 	}), blockStore)
 	if err != nil {
 		return nil, nil, err
@@ -870,6 +872,7 @@ func NewNodeWithContext(ctx context.Context,
 
 	stateStore := sm.NewBootstrapStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+		MaxEventSize:         config.Storage.MaxEventSize,
 	})
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
