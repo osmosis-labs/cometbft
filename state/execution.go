@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -47,6 +48,7 @@ type BlockExecutor struct {
 	// contexts used for controlling async update of the mempool
 	updateCtx    context.Context
 	updateCancel context.CancelFunc
+	updateMutex  sync.Mutex
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -342,6 +344,9 @@ func (blockExec *BlockExecutor) Commit(
 }
 
 func (blockExec *BlockExecutor) ResetUpdate() {
+	blockExec.updateMutex.Lock()
+	defer blockExec.updateMutex.Unlock()
+
 	if blockExec.updateCancel != nil {
 		blockExec.updateCancel()
 	}
@@ -357,8 +362,12 @@ func (blockExec *BlockExecutor) asyncUpdateMempool(
 ) {
 	defer unlockMempool()
 
+	blockExec.updateMutex.Lock()
+	ctx := blockExec.updateCtx
+	blockExec.updateMutex.Unlock()
+
 	select {
-	case <-blockExec.updateCtx.Done():
+	case <-ctx.Done():
 		return
 	default:
 		err := blockExec.mempool.Update(
