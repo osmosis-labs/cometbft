@@ -141,8 +141,8 @@ type State struct {
 	// for reporting metrics
 	metrics *Metrics
 
-	// offline state sync height indicating to which height the node synced offline
-	offlineStateSyncHeight int64
+	// // offline state sync height indicating to which height the node synced offline
+	// offlineStateSyncHeight int64
 
 	// a buffer to store the concatenated proposal block parts (serialization format)
 	// should only be accessed under the cs.mtx lock
