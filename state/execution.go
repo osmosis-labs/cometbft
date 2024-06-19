@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -42,6 +43,10 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	// contexts used for controlling async update of the mempool
+	updateCtx    context.Context
+	updateCancel context.CancelFunc
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -62,14 +67,17 @@ func NewBlockExecutor(
 	evpool EvidencePool,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
+	ctx, cancel := context.WithCancel(context.Background())
 	res := &BlockExecutor{
-		store:    stateStore,
-		proxyApp: proxyApp,
-		eventBus: types.NopEventBus{},
-		mempool:  mempool,
-		evpool:   evpool,
-		logger:   logger,
-		metrics:  NopMetrics(),
+		store:        stateStore,
+		proxyApp:     proxyApp,
+		eventBus:     types.NopEventBus{},
+		mempool:      mempool,
+		evpool:       evpool,
+		logger:       logger,
+		metrics:      NopMetrics(),
+		updateCtx:    ctx,
+		updateCancel: cancel,
 	}
 
 	for _, option := range options {
@@ -296,6 +304,9 @@ func (blockExec *BlockExecutor) Commit(
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) ([]byte, int64, error) {
+	// Reset update before locking the mempool
+	blockExec.ResetUpdate()
+
 	blockExec.mempool.Lock()
 	unlockMempool := func() { blockExec.mempool.Unlock() }
 
@@ -330,6 +341,13 @@ func (blockExec *BlockExecutor) Commit(
 	return res.Data, res.RetainHeight, err
 }
 
+func (blockExec *BlockExecutor) ResetUpdate() {
+	if blockExec.updateCancel != nil {
+		blockExec.updateCancel()
+	}
+	blockExec.updateCtx, blockExec.updateCancel = context.WithCancel(context.Background())
+}
+
 // updates the mempool with the latest state asynchronously.
 func (blockExec *BlockExecutor) asyncUpdateMempool(
 	unlockMempool func(),
@@ -339,21 +357,26 @@ func (blockExec *BlockExecutor) asyncUpdateMempool(
 ) {
 	defer unlockMempool()
 
-	err := blockExec.mempool.Update(
-		block.Height,
-		block.Txs,
-		deliverTxResponses,
-		TxPreCheck(state),
-		TxPostCheck(state),
-	)
-	if err != nil {
-		// We panic in this case, out of legacy behavior. Before we made the mempool
-		// update complete asynchronously from Commit, we would panic if the mempool
-		// update failed. This is because we panic on any error within commit.
-		// We should consider changing this behavior in the future, as there is no
-		// need to panic if the mempool update failed. The most severe thing we
-		// would need to do is dump the mempool and restart it.
-		panic(fmt.Sprintf("client error during mempool.Update; error %v", err))
+	select {
+	case <-blockExec.updateCtx.Done():
+		return
+	default:
+		err := blockExec.mempool.Update(
+			block.Height,
+			block.Txs,
+			deliverTxResponses,
+			TxPreCheck(state),
+			TxPostCheck(state),
+		)
+		if err != nil {
+			// We panic in this case, out of legacy behavior. Before we made the mempool
+			// update complete asynchronously from Commit, we would panic if the mempool
+			// update failed. This is because we panic on any error within commit.
+			// We should consider changing this behavior in the future, as there is no
+			// need to panic if the mempool update failed. The most severe thing we
+			// would need to do is dump the mempool and restart it.
+			panic(fmt.Sprintf("client error during mempool.Update; error %v", err))
+		}
 	}
 }
 
