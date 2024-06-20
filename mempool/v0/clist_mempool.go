@@ -325,14 +325,14 @@ func (mem *CListMempool) addTx(memTx *mempoolTx, key types.TxKey) {
 // Called from:
 //   - Update (lock held) if tx was committed
 //   - resCbRecheck (lock not held) if tx was invalidated
-func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
+func (mem *CListMempool) removeTx(tx types.Tx, key types.TxKey, elem *clist.CElement, removeFromCache bool) {
 	mem.txs.Remove(elem)
 	elem.DetachPrev()
-	mem.txsMap.Delete(tx.Key())
+	mem.txsMap.Delete(key)
 	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
 
 	if removeFromCache {
-		mem.cache.Remove(tx)
+		mem.cache.RemoveWithKey(tx, key)
 	}
 }
 
@@ -341,7 +341,7 @@ func (mem *CListMempool) RemoveTxByKey(txKey types.TxKey) error {
 	if e, ok := mem.txsMap.Load(txKey); ok {
 		memTx := e.(*clist.CElement).Value.(*mempoolTx)
 		if memTx != nil {
-			mem.removeTx(memTx.tx, e.(*clist.CElement), false)
+			mem.removeTx(memTx.tx, txKey, e.(*clist.CElement), false)
 			return nil
 		}
 		return errors.New("transaction not found")
@@ -493,9 +493,9 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Debug("tx is no longer valid", "tx", types.Tx(tx).Hash(), "res", r, "err", postCheckErr)
+			// mem.logger.Debug("tx is no longer valid", "tx", types.Tx(tx).Hash(), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
-			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
+			mem.removeTx(tx, types.Tx(tx).Key(), mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -613,12 +613,13 @@ func (mem *CListMempool) Update(
 	}
 
 	for i, tx := range txs {
+		txKey := tx.Key()
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
-			_ = mem.cache.Push(tx)
+			_ = mem.cache.PushWithKey(tx, txKey)
 		} else if !mem.config.KeepInvalidTxsInCache {
 			// Allow invalid transactions to be resubmitted.
-			mem.cache.Remove(tx)
+			mem.cache.RemoveWithKey(tx, txKey)
 		}
 
 		// Remove committed tx from the mempool.
@@ -631,8 +632,8 @@ func (mem *CListMempool) Update(
 		// Mempool after:
 		//   100
 		// https://github.com/tendermint/tendermint/issues/3322.
-		if e, ok := mem.txsMap.Load(tx.Key()); ok {
-			mem.removeTx(tx, e.(*clist.CElement), false)
+		if e, ok := mem.txsMap.Load(txKey); ok {
+			mem.removeTx(tx, txKey, e.(*clist.CElement), false)
 		}
 	}
 
