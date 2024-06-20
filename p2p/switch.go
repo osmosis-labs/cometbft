@@ -139,7 +139,49 @@ func NewSwitch(
 		option(sw)
 	}
 
+	fmt.Println("checking SameRegion")
+	if cfg.SameRegion {
+		// If SameRegion is set, we need to populate our region with the region of the node
+		fmt.Println("SameRegion is set")
+		myRegion, err := getOwnRegion()
+		if err != nil {
+			panic(fmt.Sprintf("failed to get own region: %v", err))
+		}
+		cfg.MyRegion = myRegion
+
+		// Make sure that the MaxPercentPeersInSameRegion does not exceed some hard coded value.
+		// If it does, replace it with the max
+		fmt.Println("conf.P2P.MaxPercentPeersInSameRegion", cfg.MaxPercentPeersInSameRegion)
+		if cfg.MaxPercentPeersInSameRegion > 0.9 {
+			cfg.MaxPercentPeersInSameRegion = config.DefaultMaxPercentPeersInSameRegion
+		}
+	}
+
 	return sw
+}
+
+func getOwnRegion() (string, error) {
+	// TODO: Add fallbacks
+	req, err := http.Get("http://ip-api.com/json/")
+	if err != nil {
+		return "", err
+	}
+	defer req.Body.Close()
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var ipInfo ipInfo
+	json.Unmarshal(body, &ipInfo)
+	fmt.Println("ipInfoOwn", ipInfo)
+
+	if ipInfo.Status != "success" {
+		return "", fmt.Errorf("failed to get own region")
+	}
+
+	return ipInfo.Country, nil
 }
 
 // SwitchFilterTimeout sets the timeout used for peer filters.
