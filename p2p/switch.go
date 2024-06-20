@@ -829,6 +829,7 @@ func (sw *Switch) filterPeer(p Peer) error {
 	// Check if adding this peer would exceed the percentage of in/outbound peers in the same region
 	if sw.config.SameRegion {
 		// Note if the new peer is in the same region as us
+		fmt.Println("Checking if peer is same region. My region: ", sw.config.MyRegion, " Peer region: ", p.GetRegion())
 		isSameRegion := p.GetRegion() == sw.config.MyRegion
 
 		if !isSameRegion {

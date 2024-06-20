@@ -65,8 +65,10 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 		}
 	}
 
+	fmt.Println("checking SameRegion")
 	if conf.P2P.SameRegion {
 		// If SameRegion is set, we need to populate our region with the region of the node
+		fmt.Println("SameRegion is set")
 		myRegion, err := getOwnRegion()
 		if err != nil {
 			return nil, err
@@ -75,6 +77,7 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 
 		// Make sure that the MaxPercentPeersInSameRegion does not exceed some hard coded value.
 		// If it does, replace it with the max
+		fmt.Println("conf.P2P.MaxPercentPeersInSameRegion", conf.P2P.MaxPercentPeersInSameRegion)
 		if conf.P2P.MaxPercentPeersInSameRegion > 0.9 {
 			conf.P2P.MaxPercentPeersInSameRegion = cfg.DefaultMaxPercentPeersInSameRegion
 		}
