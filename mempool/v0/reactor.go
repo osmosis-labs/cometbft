@@ -223,7 +223,10 @@ func (memR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 			tx:   msg,
 			peer: e.Src,
 		}
-		memR.peerTxProcesserChan <- pit
+		select {
+		case memR.peerTxProcesserChan <- pit:
+		default:
+		}
 	default:
 		memR.Logger.Error("unknown message type", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 		memR.Switch.StopPeerForError(e.Src, fmt.Errorf("mempool cannot handle message of type: %T", e.Message))
