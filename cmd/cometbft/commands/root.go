@@ -103,6 +103,7 @@ func getOwnRegion() (string, error) {
 
 	var ipInfo ipInfo
 	json.Unmarshal(body, &ipInfo)
+	fmt.Println("ipInfoOwn", ipInfo)
 
 	if ipInfo.Status != "success" {
 		return "", fmt.Errorf("failed to get own region")
