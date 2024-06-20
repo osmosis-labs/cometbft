@@ -335,6 +335,12 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
+# If same_region is set to true, the defined max_percent_peers_in_same_region
+# is the percent of both inbound and outbound that must be from the same region as this node.
+# The percent can be at max 0.9 (90%), as we hardcode this max to allow cross-geo connectivity.
+same_region = {{ .P2P.SameRegion }}
+max_percent_peers_in_same_region = "{{ .P2P.MaxPercentPeersInSameRegion }}"
+
 #######################################################
 ###          Mempool Configuration Option          ###
 #######################################################

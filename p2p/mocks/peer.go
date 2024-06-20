@@ -53,6 +53,20 @@ func (_m *Peer) Get(_a0 string) interface{} {
 	return r0
 }
 
+// GetRegion provides a mock function with given fields:
+func (_m *Peer) GetRegion() string {
+	ret := _m.Called()
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // GetRemovalFailed provides a mock function with given fields:
 func (_m *Peer) GetRemovalFailed() bool {
 	ret := _m.Called()

@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -61,7 +64,51 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 			logger.Info("deprecated usage found in configuration file", "usage", warning)
 		}
 	}
+
+	if conf.P2P.SameRegion {
+		// If SameRegion is set, we need to populate our region with the region of the node
+		myRegion, err := getOwnRegion()
+		if err != nil {
+			return nil, err
+		}
+		conf.P2P.MyRegion = myRegion
+
+		// Make sure that the MaxPercentPeersInSameRegion does not exceed some hard coded value.
+		// If it does, replace it with the max
+		if conf.P2P.MaxPercentPeersInSameRegion > 0.9 {
+			conf.P2P.MaxPercentPeersInSameRegion = cfg.DefaultMaxPercentPeersInSameRegion
+		}
+	}
+
 	return conf, nil
+}
+
+type ipInfo struct {
+	Status  string
+	Country string
+}
+
+func getOwnRegion() (string, error) {
+	// TODO: Add fallbacks
+	req, err := http.Get("http://ip-api.com/json/")
+	if err != nil {
+		return "", err
+	}
+	defer req.Body.Close()
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var ipInfo ipInfo
+	json.Unmarshal(body, &ipInfo)
+
+	if ipInfo.Status != "success" {
+		return "", fmt.Errorf("failed to get own region")
+	}
+
+	return ipInfo.Country, nil
 }
 
 // RootCmd is the root command for CometBFT core.

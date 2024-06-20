@@ -99,3 +99,4 @@ func (fp *fuzzPeer) Set(key string, value interface{})   { fp.m[key] = value }
 func (fp *fuzzPeer) Get(key string) interface{}          { return fp.m[key] }
 func (fp *fuzzPeer) GetRemovalFailed() bool              { return false }
 func (fp *fuzzPeer) SetRemovalFailed()                   {}
+func (fp *fuzzPeer) GetRegion() string                   { return "" }

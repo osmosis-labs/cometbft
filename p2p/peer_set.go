@@ -20,9 +20,11 @@ type IPeerSet interface {
 // PeerSet is a special structure for keeping a table of peers.
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
-	mtx    cmtsync.Mutex
-	lookup map[ID]*peerSetItem
-	list   []Peer
+	mtx         cmtsync.Mutex
+	lookup      map[ID]*peerSetItem
+	list        []Peer
+	numInbound  int
+	numOutbound int
 }
 
 type peerSetItem struct {
@@ -56,6 +58,13 @@ func (ps *PeerSet) Add(peer Peer) error {
 	// iterating over the ps.list slice.
 	ps.list = append(ps.list, peer)
 	ps.lookup[peer.ID()] = &peerSetItem{peer, index}
+
+	if peer.IsOutbound() {
+		ps.numOutbound++
+	} else {
+		ps.numInbound++
+	}
+
 	return nil
 }
 
@@ -139,6 +148,13 @@ func (ps *PeerSet) Remove(peer Peer) bool {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, peer.ID())
+
+	if peer.IsOutbound() {
+		ps.numOutbound--
+	} else {
+		ps.numInbound--
+	}
+
 	return true
 }
 

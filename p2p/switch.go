@@ -1,8 +1,11 @@
 package p2p
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/cometbft/cometbft/config"
@@ -364,6 +367,21 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	// https://github.com/tendermint/tendermint/issues/3338
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
+		if peer.IsOutbound() {
+			sw.peers.numOutbound--
+			if sw.config.SameRegion {
+				if peer.GetRegion() != sw.config.MyRegion {
+					sw.config.CurrentNumOutboundPeersInOtherRegion--
+				}
+			}
+		} else {
+			sw.peers.numInbound--
+			if sw.config.SameRegion {
+				if peer.GetRegion() != sw.config.MyRegion {
+					sw.config.CurrentNumInboundPeersInOtherRegion--
+				}
+			}
+		}
 	} else {
 		// Removal of the peer has failed. The function above sets a flag within the peer to mark this.
 		// We keep this message here as information to the developer.
@@ -721,6 +739,17 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
+	var peerRegion string
+	if sw.config.SameRegion {
+		// Note if the new peer is in the same region as us
+		peerRegionInternal, err := getRegionFromIP(addr.IP.String())
+		if err != nil {
+			sw.Logger.Error("Failed to get region from IP", "err", err)
+			return err
+		}
+		peerRegion = peerRegionInternal
+	}
+
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:       sw.chDescs,
 		onPeerError:   sw.StopPeerForError,
@@ -729,6 +758,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		msgTypeByChID: sw.msgTypeByChID,
 		metrics:       sw.metrics,
 		mlc:           sw.mlc,
+		region:        peerRegion,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
@@ -762,10 +792,57 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	return nil
 }
 
+type ipInfo struct {
+	Status  string
+	Country string
+}
+
+func getRegionFromIP(ip string) (string, error) {
+	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country", ip))
+	if err != nil {
+		return "", err
+	}
+	defer req.Body.Close()
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var ipInfo ipInfo
+	json.Unmarshal(body, &ipInfo)
+
+	if ipInfo.Status != "success" {
+		return "", fmt.Errorf("failed to get region from IP")
+	}
+
+	return ipInfo.Country, nil
+}
+
 func (sw *Switch) filterPeer(p Peer) error {
 	// Avoid duplicate
 	if sw.peers.Has(p.ID()) {
 		return ErrRejected{id: p.ID(), isDuplicate: true}
+	}
+
+	// Check if adding this peer would exceed the percentage of in/outbound peers in the same region
+	if sw.config.SameRegion {
+		// Note if the new peer is in the same region as us
+		isSameRegion := p.GetRegion() == sw.config.MyRegion
+
+		if !isSameRegion {
+			// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
+			// TODO check this formula
+			if p.IsOutbound() {
+				if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.peers.numOutbound+1) {
+					return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
+				}
+			} else {
+				if sw.config.CurrentNumInboundPeersInOtherRegion+1 > (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.peers.numInbound+1) {
+					return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
+				}
+			}
+		}
 	}
 
 	errc := make(chan error, len(sw.peerFilters))
@@ -835,6 +912,13 @@ func (sw *Switch) addPeer(p Peer) error {
 		return err
 	}
 	sw.metrics.Peers.Add(float64(1))
+	if sw.config.SameRegion {
+		if p.IsOutbound() && p.GetRegion() != sw.config.MyRegion {
+			sw.config.CurrentNumOutboundPeersInOtherRegion++
+		} else if !p.IsOutbound() && p.GetRegion() != sw.config.MyRegion {
+			sw.config.CurrentNumInboundPeersInOtherRegion++
+		}
+	}
 
 	// Start all the reactor protocols on the peer.
 	for _, reactor := range sw.reactors {

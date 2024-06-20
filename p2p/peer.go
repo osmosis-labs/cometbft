@@ -44,6 +44,8 @@ type Peer interface {
 
 	SetRemovalFailed()
 	GetRemovalFailed() bool
+
+	GetRegion() string
 }
 
 //----------------------------------------------------------
@@ -126,6 +128,8 @@ type peer struct {
 
 	// When removal of a peer fails, we set this flag
 	removalAttemptFailed bool
+
+	region string
 }
 
 type PeerOption func(*peer)
@@ -139,6 +143,7 @@ func newPeer(
 	chDescs []*cmtconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	mlc *metricsLabelCache,
+	region string,
 	options ...PeerOption,
 ) *peer {
 	p := &peer{
@@ -149,6 +154,7 @@ func newPeer(
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 		mlc:           mlc,
+		region:        region,
 	}
 
 	p.mconn = createMConnection(
@@ -435,4 +441,9 @@ func createMConnection(
 		onError,
 		config,
 	)
+}
+
+// GetRegion
+func (p *peer) GetRegion() string {
+	return p.region
 }
