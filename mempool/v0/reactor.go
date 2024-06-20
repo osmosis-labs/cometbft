@@ -136,7 +136,6 @@ func (memR *Reactor) OnStart() error {
 }
 
 func (memR *Reactor) OnStop() {
-	close(memR.peerTxProcesserChan)
 }
 
 // GetChannels implements Reactor by returning the list of channels for this
@@ -253,7 +252,7 @@ func (memR *Reactor) incomingPacketProcessor() {
 			ntx := types.Tx(tx)
 			err = memR.mempool.CheckTx(ntx, nil, txInfo)
 			if errors.Is(err, mempool.ErrTxInCache) {
-				memR.Logger.Debug("Tx already exists in cache", "tx", ntx.String())
+				// memR.Logger.Debug("Tx already exists in cache", "tx", ntx.String())
 			} else if err != nil {
 				memR.Logger.Info("Could not check tx", "tx", ntx.String(), "err", err)
 			}

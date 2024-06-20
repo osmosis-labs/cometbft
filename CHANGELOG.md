@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.37.4-v25-osmo-9
+
+* [#112](https://github.com/osmosis-labs/cometbft/pull/112)  perf(mempool): Remove expensive debug logs + repeated hashing in mempool. Fix some v0.37.x line hard-to-reach race bugs. (Not in upstream)
+
+
 ## v0.37.4-v25-osmo-8
 
 * [#108](https://github.com/osmosis-labs/cometbft/pull/108) perf(consensus): Make some consensus reactor messages take RLock's not WLock's (#3211)
