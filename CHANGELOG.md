@@ -1,5 +1,7 @@
 # CHANGELOG
 
+* [#113](https://github.com/osmosis-labs/cometbft/pull/113), [#114](https://github.com/osmosis-labs/cometbft/pull/114) perf(consensus): Make consensus never block on Mempool Updates.
+
 ## v0.37.4-v25-osmo-9
 
 * [#112](https://github.com/osmosis-labs/cometbft/pull/112)  perf(mempool): Remove expensive debug logs + repeated hashing in mempool. Fix some v0.37.x line hard-to-reach race bugs. (Not in upstream)
