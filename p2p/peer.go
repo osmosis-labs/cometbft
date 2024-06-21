@@ -143,9 +143,19 @@ func newPeer(
 	chDescs []*cmtconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	mlc *metricsLabelCache,
-	region string,
+	sameRegion bool,
 	options ...PeerOption,
 ) *peer {
+	var peerRegion string
+	if sameRegion {
+		// Note if the new peer is in the same region as us
+		peerRegionInternal, err := getRegionFromIP(pc.ip.String())
+		if err != nil {
+			fmt.Print("Failed to get region from IP", "err", err)
+		}
+		peerRegion = peerRegionInternal
+	}
+
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
@@ -154,7 +164,7 @@ func newPeer(
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 		mlc:           mlc,
-		region:        region,
+		region:        peerRegion,
 	}
 
 	p.mconn = createMConnection(

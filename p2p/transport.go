@@ -53,7 +53,7 @@ type peerConfig struct {
 	msgTypeByChID map[byte]proto.Message
 	metrics       *Metrics
 	mlc           *metricsLabelCache
-	region        string
+	sameRegion    bool
 }
 
 // Transport emits and connects to Peers. The implementation of Peer is left to
@@ -527,7 +527,7 @@ func (mt *MultiplexTransport) wrapPeer(
 		cfg.chDescs,
 		cfg.onPeerError,
 		cfg.mlc,
-		cfg.region,
+		cfg.sameRegion,
 		PeerMetrics(cfg.metrics),
 	)
 

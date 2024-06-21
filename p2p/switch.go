@@ -781,16 +781,16 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	var peerRegion string
-	if sw.config.SameRegion {
-		// Note if the new peer is in the same region as us
-		peerRegionInternal, err := getRegionFromIP(addr.IP.String())
-		if err != nil {
-			sw.Logger.Error("Failed to get region from IP", "err", err)
-			return err
-		}
-		peerRegion = peerRegionInternal
-	}
+	// var peerRegion string
+	// if sw.config.SameRegion {
+	// 	// Note if the new peer is in the same region as us
+	// 	peerRegionInternal, err := getRegionFromIP(addr.IP.String())
+	// 	if err != nil {
+	// 		sw.Logger.Error("Failed to get region from IP", "err", err)
+	// 		return err
+	// 	}
+	// 	peerRegion = peerRegionInternal
+	// }
 
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:       sw.chDescs,
@@ -800,7 +800,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		msgTypeByChID: sw.msgTypeByChID,
 		metrics:       sw.metrics,
 		mlc:           sw.mlc,
-		region:        peerRegion,
+		sameRegion:    sw.config.SameRegion,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
