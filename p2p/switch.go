@@ -684,6 +684,7 @@ func (sw *Switch) acceptRoutine() {
 			metrics:       sw.metrics,
 			mlc:           sw.mlc,
 			isPersistent:  sw.IsPeerPersistent,
+			sameRegion:    sw.config.SameRegion,
 		})
 		if err != nil {
 			switch err := err.(type) {
@@ -882,7 +883,9 @@ func (sw *Switch) filterPeer(p Peer) error {
 				fmt.Println("peer is outbound")
 				fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion", sw.config.CurrentNumOutboundPeersInOtherRegion)
 				fmt.Println("sw.config.MaxPercentPeersInSameRegion", sw.config.MaxPercentPeersInSameRegion)
-				fmt.Println("sw.peers.numOutbound", sw.peers.numOutbound)
+				fmt.Println("sw.config.MaxNumOutboundPeers", sw.config.MaxNumOutboundPeers)
+				fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion+1", sw.config.CurrentNumOutboundPeersInOtherRegion+1)
+				fmt.Println("1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers", (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers))
 				if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers) {
 					return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
 				}
@@ -890,6 +893,9 @@ func (sw *Switch) filterPeer(p Peer) error {
 				fmt.Println("peer is inbound")
 				fmt.Println("sw.config.CurrentNumInboundPeersInOtherRegion", sw.config.CurrentNumInboundPeersInOtherRegion)
 				fmt.Println("sw.config.MaxPercentPeersInSameRegion", sw.config.MaxPercentPeersInSameRegion)
+				fmt.Println("sw.config.MaxNumInboundPeers", sw.config.MaxNumInboundPeers)
+				fmt.Println("sw.config.CurrentNumInboundPeersInOtherRegion+1", sw.config.CurrentNumInboundPeersInOtherRegion+1)
+				fmt.Println("1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumInboundPeers", (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumInboundPeers))
 				if sw.config.CurrentNumInboundPeersInOtherRegion+1 > (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumInboundPeers) {
 					return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
 				}
