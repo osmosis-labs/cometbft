@@ -149,7 +149,11 @@ func newPeer(
 	var peerRegion string
 	if sameRegion {
 		// Note if the new peer is in the same region as us
-		peerRegionInternal, err := getRegionFromIP(pc.ip.String())
+		peerIp, err := nodeInfo.NetAddress()
+		if err != nil {
+			fmt.Print("Failed to get IP from nodeInfo", "err", err)
+		}
+		peerRegionInternal, err := getRegionFromIP(peerIp.IP.String())
 		if err != nil {
 			fmt.Print("Failed to get region from IP", "err", err)
 		}
