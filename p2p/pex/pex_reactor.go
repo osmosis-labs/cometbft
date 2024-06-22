@@ -362,10 +362,10 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		return err
 	}
 
-	srcIsSeed := false
+	//srcIsSeed := false
 	for _, seedAddr := range r.seedAddrs {
 		if seedAddr.Equals(srcAddr) {
-			srcIsSeed = true
+			//srcIsSeed = true
 			break
 		}
 	}
@@ -380,22 +380,23 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 			continue
 		}
 
-		// If this address came from a seed node, try to connect to it without
-		// waiting (#2093)
-		if srcIsSeed {
-			go func(addr *p2p.NetAddress) {
-				fmt.Println("ReceiveAddrs dialing from srcIsSeed")
-				err := r.dialPeer(addr)
-				if err != nil {
-					switch err.(type) {
-					case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
-						r.Logger.Debug(err.Error(), "addr", addr)
-					default:
-						r.Logger.Debug(err.Error(), "addr", addr)
-					}
-				}
-			}(netAddr)
-		}
+		// // If this address came from a seed node, try to connect to it without
+		// // waiting (#2093)
+		// // TODO: I think this is a bug. It causes us to go above the maxOutboundPeers
+		// if srcIsSeed {
+		// 	go func(addr *p2p.NetAddress) {
+		// 		fmt.Println("ReceiveAddrs dialing from srcIsSeed")
+		// 		err := r.dialPeer(addr)
+		// 		if err != nil {
+		// 			switch err.(type) {
+		// 			case errMaxAttemptsToDial, errTooEarlyToDial, p2p.ErrCurrentlyDialingOrExistingAddress:
+		// 				r.Logger.Debug(err.Error(), "addr", addr)
+		// 			default:
+		// 				r.Logger.Debug(err.Error(), "addr", addr)
+		// 			}
+		// 		}
+		// 	}(netAddr)
+		// }
 	}
 
 	return nil
