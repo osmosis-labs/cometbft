@@ -699,6 +699,7 @@ func (bpr *bpRequester) pickPeerAndSendRequest() {
 	bpr.mtx.Lock()
 	secondPeerID := bpr.secondPeerID
 	bpr.mtx.Unlock()
+	fmt.Println("pickPeerAndSendRequest", bpr.height, secondPeerID)
 
 	var peer *bpPeer
 PICK_PEER_LOOP:
@@ -757,6 +758,7 @@ func (bpr *bpRequester) newHeight(height int64) {
 // Returns only when a block is found (e.g. AddBlock() is called)
 func (bpr *bpRequester) requestRoutine() {
 	gotBlock := false
+	fmt.Println("requestRoutine", bpr.height)
 
 OUTER_LOOP:
 	for {
