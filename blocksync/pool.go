@@ -437,6 +437,45 @@ func (pool *BlockPool) sortPeers() {
 	})
 }
 
+// TODO: Might revert start
+func (pool *BlockPool) refreshPeers() {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Logic to refresh peers, e.g., disconnect and reconnect
+	for peerID, peer := range pool.peers {
+		if peer.didTimeout {
+			pool.removePeer(peerID)
+		}
+	}
+
+	// // Optionally, add logic to reconnect to new peers
+	// // This is a placeholder and should be replaced with actual peer connection logic
+	// pool.connectToNewPeers()
+}
+
+func (pool *BlockPool) releaseAllRequests() {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Logic to release all requests
+	for height, requester := range pool.requesters {
+		requester.Stop()
+		delete(pool.requesters, height)
+	}
+}
+
+func (pool *BlockPool) requestNextBlock() {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	// Logic to request the next block needed
+	nextHeight := pool.height
+	pool.makeNextRequester(nextHeight)
+}
+
+// TODO: Might revert end
+
 func (pool *BlockPool) makeNextRequester(nextHeight int64) {
 	pool.mtx.Lock()
 	request := newBPRequester(pool, nextHeight)
@@ -698,18 +737,39 @@ func (bpr *bpRequester) pickPeerAndSendRequest() {
 	bpr.mtx.Unlock()
 
 	var peer *bpPeer
+	timeout := time.After(30 * time.Second) // Set a timeout for 30 seconds
+
 PICK_PEER_LOOP:
 	for {
-		if !bpr.IsRunning() || !bpr.pool.IsRunning() {
-			return
+		select {
+		case <-timeout:
+			bpr.Logger.Debug("Timeout reached, refreshing peers", "height", bpr.height)
+			bpr.pool.refreshPeers()                // Add a method to refresh peers
+			bpr.pool.releaseAllRequests()          // Add a method to release all requests
+			bpr.pool.requestNextBlock()            // Add a method to request the next block needed
+			timeout = time.After(30 * time.Second) // Reset the timeout
+		default:
+			if !bpr.IsRunning() || !bpr.pool.IsRunning() {
+				return
+			}
+			peer = bpr.pool.pickIncrAvailablePeer(bpr.height, secondPeerID)
+			if peer == nil {
+				bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
+				time.Sleep(requestInterval)
+				continue PICK_PEER_LOOP
+			}
+			break PICK_PEER_LOOP
 		}
-		peer = bpr.pool.pickIncrAvailablePeer(bpr.height, secondPeerID)
-		if peer == nil {
-			bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
-			time.Sleep(requestInterval)
-			continue PICK_PEER_LOOP
-		}
-		break PICK_PEER_LOOP
+		// if !bpr.IsRunning() || !bpr.pool.IsRunning() {
+		// 	return
+		// }
+		// peer = bpr.pool.pickIncrAvailablePeer(bpr.height, secondPeerID)
+		// if peer == nil {
+		// 	bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
+		// 	time.Sleep(requestInterval)
+		// 	continue PICK_PEER_LOOP
+		// }
+		// break PICK_PEER_LOOP
 	}
 	bpr.mtx.Lock()
 	bpr.peerID = peer.id
