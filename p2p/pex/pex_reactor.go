@@ -31,7 +31,7 @@ const (
 	maxMsgSize = maxAddressSize * maxGetSelection
 
 	// ensure we have enough peers
-	defaultEnsurePeersPeriod = 1 * time.Second
+	defaultEnsurePeersPeriod = 30 * time.Second
 
 	// Seed/Crawler constants
 
@@ -492,8 +492,6 @@ func (r *Reactor) ensurePeers() {
 		// before dialing again, or have dialed too many times already
 		toDial[try.ID] = try
 	}
-
-	fmt.Println("toDial", toDial)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
