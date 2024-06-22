@@ -460,6 +460,14 @@ func (r *Reactor) ensurePeersRoutine() {
 // the node operator. It should not be used to compute what addresses are
 // already connected or not.
 func (r *Reactor) ensurePeers() {
+	// Discard peers that dont reply to our requests
+	curPeers := r.Switch.Peers().List()
+	for _, peer := range curPeers {
+		if peer.Status().RecvMonitor.Idle < time.Second*30 {
+			r.Switch.StopPeerGracefully(peer)
+		}
+	}
+
 	var (
 		out, in, dial = r.Switch.NumPeers()
 		numToDial     = r.Switch.MaxNumOutboundPeers() - (out + dial)
