@@ -384,6 +384,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		// waiting (#2093)
 		if srcIsSeed {
 			go func(addr *p2p.NetAddress) {
+				fmt.Println("ReceiveAddrs dialing from srcIsSeed")
 				err := r.dialPeer(addr)
 				if err != nil {
 					switch err.(type) {
@@ -496,6 +497,7 @@ func (r *Reactor) ensurePeers() {
 	// Dial picked addresses
 	for _, addr := range toDial {
 		go func(addr *p2p.NetAddress) {
+			fmt.Println("ensurePeers dialing")
 			err := r.dialPeer(addr)
 			if err != nil {
 				switch err.(type) {
@@ -711,6 +713,7 @@ func (r *Reactor) crawlPeers(addrs []*p2p.NetAddress) {
 			LastCrawled: now,
 		}
 
+		fmt.Println("crawlPeers dialing")
 		err := r.dialPeer(addr)
 		if err != nil {
 			switch err.(type) {
