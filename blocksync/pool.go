@@ -763,11 +763,13 @@ OUTER_LOOP:
 
 		poolHeight := bpr.pool.Height()
 		fmt.Println("poolHeight", poolHeight)
-		var retryTimer *time.Timer
 		if bpr.height-poolHeight < minBlocksForSingleRequest {
 			bpr.pickSecondPeerAndSendRequest()
-			retryTimer = time.NewTimer(requestRetrySeconds * time.Second)
-		} else {
+		}
+
+		retryTimer := time.NewTimer(requestRetrySeconds * time.Second)
+		if bpr.height-poolHeight < 2 {
+			fmt.Println("quick timer")
 			retryTimer = time.NewTimer(5 * time.Second)
 		}
 
