@@ -563,7 +563,6 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 		}
 	}
 
-	fmt.Println("dialPeer", addr)
 	err := r.Switch.DialPeerWithAddress(addr)
 	if err != nil {
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
@@ -626,7 +625,6 @@ func (r *Reactor) dialSeeds() {
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
-		fmt.Println("dialSeeds", seedAddr)
 		err := r.Switch.DialPeerWithAddress(seedAddr)
 
 		switch err.(type) {
