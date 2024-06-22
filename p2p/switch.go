@@ -451,6 +451,7 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 			return
 		}
 
+		fmt.Println("reconnectToPeer", addr)
 		err := sw.DialPeerWithAddress(addr)
 		if err == nil {
 			return // success
@@ -573,6 +574,7 @@ func (sw *Switch) dialPeersAsync(netAddrs []*NetAddress) {
 
 			sw.randomSleep(0)
 
+			fmt.Println("dialPeersAsync", addr)
 			err := sw.DialPeerWithAddress(addr)
 			if err != nil {
 				switch err.(type) {
