@@ -440,6 +440,13 @@ func (r *Reactor) ensurePeersRoutine() {
 		select {
 		case <-ticker.C:
 			r.ensurePeers()
+			out, _, _ := r.Switch.NumPeers()
+			if out == 0 {
+				// Retry sooner if no outbound peers
+				ticker.Reset(time.Second * 3)
+			} else {
+				ticker.Reset(r.ensurePeersPeriod)
+			}
 		case <-r.Quit():
 			ticker.Stop()
 			return
