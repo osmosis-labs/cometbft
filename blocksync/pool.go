@@ -151,7 +151,6 @@ func (pool *BlockPool) makeRequestersRoutine() {
 func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
-	fmt.Println("removeTimedoutPeers", len(pool.peers))
 
 	for _, peer := range pool.peers {
 		if !peer.didTimeout && peer.numPending > 0 {
@@ -451,7 +450,9 @@ func (pool *BlockPool) makeNextRequester(nextHeight int64) {
 }
 
 func (pool *BlockPool) sendRequest(height int64, peerID p2p.ID) {
+	fmt.Println("sendRequest", height, peerID)
 	if !pool.IsRunning() {
+		fmt.Println("not running")
 		return
 	}
 	pool.requestsCh <- BlockRequest{height, peerID}
