@@ -151,6 +151,7 @@ func (pool *BlockPool) makeRequestersRoutine() {
 func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
+	fmt.Println("removeTimedoutPeers")
 
 	for _, peer := range pool.peers {
 		if !peer.didTimeout && peer.numPending > 0 {
@@ -165,6 +166,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 					"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
 				peer.didTimeout = true
 			}
+			fmt.Println("curRate", curRate, "minRecvRate", minRecvRate)
 
 			peer.curRate = curRate
 		}
