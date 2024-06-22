@@ -115,6 +115,7 @@ type MConnection struct {
 	created time.Time // time of creation
 
 	_maxPacketMsgSize int
+	packetMsgCount    int64
 }
 
 // MConnConfig is a MConnection configuration.
@@ -642,6 +643,7 @@ FOR_LOOP:
 				// never block
 			}
 		case *tmp2p.Packet_PacketMsg:
+			atomic.AddInt64(&c.packetMsgCount, 1) // increment Packet_PacketMsg count
 			channelID := byte(pkt.PacketMsg.ChannelID)
 			channel, ok := c.channelsIdx[channelID]
 			if pkt.PacketMsg.ChannelID < 0 || pkt.PacketMsg.ChannelID > math.MaxUint8 || !ok || channel == nil {
@@ -668,6 +670,13 @@ FOR_LOOP:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
 			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 			c.stopForError(err)
+			break FOR_LOOP
+		}
+
+		// Check if no Packet_PacketMsg received within a certain timeframe
+		if atomic.LoadInt64(&c.packetMsgCount) == 0 {
+			c.Logger.Error("No Packet_PacketMsg received, switching out peer", "conn", c)
+			c.stopForError(errors.New("no Packet_PacketMsg received"))
 			break FOR_LOOP
 		}
 	}
