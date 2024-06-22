@@ -444,9 +444,7 @@ func (pool *BlockPool) refreshPeers() {
 
 	// Logic to refresh peers, e.g., disconnect and reconnect
 	for peerID, peer := range pool.peers {
-		fmt.Println("Refreshing peer", peerID)
 		if peer.didTimeout {
-			fmt.Println("Removing timed out peer", peerID)
 			pool.removePeer(peerID)
 		}
 	}
@@ -745,7 +743,6 @@ PICK_PEER_LOOP:
 	for {
 		select {
 		case <-timeout:
-			fmt.Println("Timeout reached, refreshing peers", bpr.height)
 			bpr.Logger.Debug("Timeout reached, refreshing peers", "height", bpr.height)
 			bpr.pool.refreshPeers()                // Add a method to refresh peers
 			bpr.pool.releaseAllRequests()          // Add a method to release all requests
@@ -757,7 +754,6 @@ PICK_PEER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height, secondPeerID)
 			if peer == nil {
-				fmt.Println("No peers currently available; will retry shortly", bpr.height)
 				bpr.Logger.Debug("No peers currently available; will retry shortly", "height", bpr.height)
 				time.Sleep(requestInterval)
 				continue PICK_PEER_LOOP
@@ -779,7 +775,6 @@ PICK_PEER_LOOP:
 	bpr.peerID = peer.id
 	bpr.mtx.Unlock()
 
-	fmt.Println("Sending request to peer", bpr.height, peer.id)
 	bpr.pool.sendRequest(bpr.height, peer.id)
 }
 
