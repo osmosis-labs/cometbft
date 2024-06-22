@@ -151,7 +151,7 @@ func (pool *BlockPool) makeRequestersRoutine() {
 func (pool *BlockPool) removeTimedoutPeers() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
-	fmt.Println("removeTimedoutPeers")
+	fmt.Println("removeTimedoutPeers", len(pool.peers))
 
 	for _, peer := range pool.peers {
 		if !peer.didTimeout && peer.numPending > 0 {
