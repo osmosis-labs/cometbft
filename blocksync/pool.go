@@ -693,6 +693,7 @@ func (bpr *bpRequester) redo(peerID p2p.ID) {
 }
 
 func (bpr *bpRequester) pickPeerAndSendRequest() {
+	fmt.Println("pickPeerAndSendRequest")
 	bpr.mtx.Lock()
 	secondPeerID := bpr.secondPeerID
 	bpr.mtx.Unlock()
@@ -721,6 +722,7 @@ PICK_PEER_LOOP:
 // Picks a second peer and sends a request to it. If the second peer is already
 // set, does nothing.
 func (bpr *bpRequester) pickSecondPeerAndSendRequest() (picked bool) {
+	fmt.Println("pickSecondPeerAndSendRequest")
 	bpr.mtx.Lock()
 	if bpr.secondPeerID != "" {
 		bpr.mtx.Unlock()
@@ -760,11 +762,15 @@ OUTER_LOOP:
 		bpr.pickPeerAndSendRequest()
 
 		poolHeight := bpr.pool.Height()
+		fmt.Println("poolHeight", poolHeight)
+		var retryTimer *time.Timer
 		if bpr.height-poolHeight < minBlocksForSingleRequest {
 			bpr.pickSecondPeerAndSendRequest()
+			retryTimer = time.NewTimer(requestRetrySeconds * time.Second)
+		} else {
+			retryTimer = time.NewTimer(5 * time.Second)
 		}
 
-		retryTimer := time.NewTimer(requestRetrySeconds * time.Second)
 		defer retryTimer.Stop()
 
 		for {
