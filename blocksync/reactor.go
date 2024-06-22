@@ -263,7 +263,6 @@ func (bcR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *Reactor) poolRoutine(stateSynced bool) {
-
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()
 
@@ -283,6 +282,13 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 
 	didProcessCh := make(chan struct{}, 1)
 
+	// Map to track request times
+	requestTimes := make(map[p2p.ID]time.Time)
+
+	// Ticker to check for timeouts
+	timeoutTicker := time.NewTicker(1 * time.Second)
+	defer timeoutTicker.Stop()
+
 	go func() {
 		for {
 			select {
@@ -295,11 +301,15 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
+				fmt.Println("Send block request", "peer", peer.ID(), "height", request.Height)
 				queued := peer.TrySendEnvelope(p2p.Envelope{
 					ChannelID: BlocksyncChannel,
 					Message:   &bcproto.BlockRequest{Height: request.Height},
 				})
-				if !queued {
+				if queued {
+					// Record the time when the request was sent
+					requestTimes[request.PeerID] = time.Now()
+				} else {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
 			case err := <-bcR.errorsCh:
@@ -312,6 +322,20 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 				// ask for status updates
 				go bcR.BroadcastStatusRequest()
 
+			case <-timeoutTicker.C:
+				// Check for timeouts
+				now := time.Now()
+				for peerID, requestTime := range requestTimes {
+					if now.Sub(requestTime) > 5*time.Second {
+						// Timeout exceeded, remove the peer
+						bcR.Logger.Info("Peer response timeout, removing peer", "peer", peerID)
+						peer := bcR.Switch.Peers().Get(peerID)
+						if peer != nil {
+							bcR.Switch.StopPeerForError(peer, fmt.Errorf("response timeout"))
+						}
+						delete(requestTimes, peerID)
+					}
+				}
 			}
 		}
 	}()
