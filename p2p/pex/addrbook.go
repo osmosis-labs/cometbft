@@ -304,49 +304,54 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
 
-	// pick a random peer from a random bucket
-	var bucket map[string]*knownAddress
-	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
-	if (pickFromOldBucket && a.nOld == 0) ||
-		(!pickFromOldBucket && a.nNew == 0) {
-		return nil
-	}
-	// loop until we pick a random non-empty bucket
-	for len(bucket) == 0 {
-		if pickFromOldBucket {
-			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
-		} else {
-			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
+	// Try up to 3 times to pick a non-empty bucket
+	for attempts := 0; attempts < 3; attempts++ {
+		// pick a random peer from a random bucket
+		var bucket map[string]*knownAddress
+		pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
+		if (pickFromOldBucket && a.nOld == 0) ||
+			(!pickFromOldBucket && a.nNew == 0) {
+			return nil
 		}
-	}
-
-	// Filter the bucket by region
-	filteredBucket := make(map[string]*knownAddress)
-	for addrStr, ka := range bucket {
-		if ka.Region == "" {
-			fmt.Println("Region is empty")
-			region, err := getRegionFromIP(ka.Addr.IP.String())
-			if err != nil {
-				a.Logger.Error("Failed to get region from IP", "err", err)
-				return nil
+		// loop until we pick a random non-empty bucket
+		for len(bucket) == 0 {
+			if pickFromOldBucket {
+				bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
+			} else {
+				bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
 			}
-			ka.Region = region
-			a.addrLookup[ka.ID()] = ka
 		}
-		fmt.Println("Region", ka.Region)
-		if ka.Region == region {
-			filteredBucket[addrStr] = ka
+
+		// Filter the bucket by region
+		filteredBucket := make(map[string]*knownAddress)
+		for addrStr, ka := range bucket {
+			if ka.Region == "" {
+				region, err := getRegionFromIP(ka.Addr.IP.String())
+				if err != nil {
+					a.Logger.Error("Failed to get region from IP", "err", err)
+					return nil
+				}
+				ka.Region = region
+				a.addrLookup[ka.ID()] = ka
+			}
+			if ka.Region == region {
+				filteredBucket[addrStr] = ka
+			}
+		}
+
+		if len(filteredBucket) > 0 {
+			// pick a random index and loop over the map to return that index
+			randIndex := a.rand.Intn(len(filteredBucket))
+			for _, ka := range filteredBucket {
+				if randIndex == 0 {
+					return ka.Addr
+				}
+				randIndex--
+			}
 		}
 	}
 
-	// pick a random index and loop over the map to return that index
-	randIndex := a.rand.Intn(len(filteredBucket))
-	for _, ka := range filteredBucket {
-		if randIndex == 0 {
-			return ka.Addr
-		}
-		randIndex--
-	}
+	// If no suitable bucket is found after 3 attempts, return nil
 	return nil
 }
 
