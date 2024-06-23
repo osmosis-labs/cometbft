@@ -1160,7 +1160,7 @@ type ipInfo struct {
 }
 
 func getRegionFromIP(ip string) (string, error) {
-	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country", ip))
+	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country,countryCode", ip))
 	if err != nil {
 		return "", err
 	}
