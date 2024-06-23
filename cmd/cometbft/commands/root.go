@@ -61,7 +61,6 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 			logger.Info("deprecated usage found in configuration file", "usage", warning)
 		}
 	}
-
 	return conf, nil
 }
 

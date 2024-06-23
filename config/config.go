@@ -40,10 +40,11 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultTendermintDir               = ".cometbft"
 	DefaultMaxPercentPeersInSameRegion = float64(0.9)
-	defaultConfigDir                   = "config"
-	defaultDataDir                     = "data"
+
+	DefaultTendermintDir = ".cometbft"
+	defaultConfigDir     = "config"
+	defaultDataDir       = "data"
 
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
@@ -632,6 +633,7 @@ type P2PConfig struct { //nolint: maligned
 	TestFuzz       bool            `mapstructure:"test_fuzz"`
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
 
+	// Configs for connecting to peers in the same region
 	SameRegion                           bool    `mapstructure:"same_region"`
 	MyRegion                             string  `mapstructure:"my_region"`
 	MaxPercentPeersInSameRegion          float64 `mapstructure:"max_percent_peers_in_same_region"`

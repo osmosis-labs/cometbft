@@ -457,7 +457,6 @@ func createMConnection(
 	)
 }
 
-// GetRegion
 func (p *peer) GetRegion() string {
 	return p.region
 }
