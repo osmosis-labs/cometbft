@@ -972,13 +972,16 @@ func (sw *Switch) addPeer(p Peer) error {
 	// Add the peer to PeerSet. Do this before starting the reactors
 	// so that if Receive errors, we will find the peer and remove it.
 	// Add should not err since we already checked peers.Has().
+	fmt.Println("adding peer", p.ID())
 	if err := sw.peers.Add(p); err != nil {
 		switch err.(type) {
 		case ErrPeerRemoval:
+			fmt.Println("Error starting peer, Peer has already errored and removal was attempted.")
 			sw.Logger.Error("Error starting peer ",
 				" err ", "Peer has already errored and removal was attempted.",
 				"peer", p.ID())
 		}
+		fmt.Println("adding peer error", err)
 		return err
 	}
 	sw.metrics.Peers.Add(float64(1))

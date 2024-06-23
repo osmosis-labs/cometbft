@@ -541,6 +541,7 @@ func (r *Reactor) ensurePeersRegion() {
 	for _, addr := range toDial {
 		go func(addr *p2p.NetAddress) {
 			err := r.dialPeer(addr)
+			fmt.Println("err in ensurePeersRegion", err)
 			if err != nil {
 				switch err.(type) {
 				case errMaxAttemptsToDial, errTooEarlyToDial:
