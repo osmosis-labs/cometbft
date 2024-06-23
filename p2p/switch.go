@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/biter777/countries"
 	"github.com/cometbft/cometbft/config"
 	"github.com/cometbft/cometbft/libs/cmap"
 	"github.com/cometbft/cometbft/libs/rand"
@@ -178,7 +179,12 @@ func getOwnRegion() (string, error) {
 		return "", fmt.Errorf("failed to get own region")
 	}
 
-	return ipInfo.Country, nil
+	country := countries.ByName(ipInfo.Country)
+	if country == countries.Unknown {
+		return "", fmt.Errorf("could not find country: %s", ipInfo.Country)
+	}
+
+	return country.Info().Region.String(), nil
 }
 
 // SwitchFilterTimeout sets the timeout used for peer filters.
@@ -890,10 +896,15 @@ func getRegionFromIP(ip string) (string, error) {
 	fmt.Println("ipInfoPeer", ipInfo)
 
 	if ipInfo.Status != "success" {
-		return "", fmt.Errorf("failed to get region from IP %s", ip)
+		return "", fmt.Errorf("failed to get country from IP %s", ip)
 	}
 
-	return ipInfo.Country, nil
+	country := countries.ByName(ipInfo.Country)
+	if country == countries.Unknown {
+		return "", fmt.Errorf("could not find country: %s", ipInfo.Country)
+	}
+
+	return country.Info().Region.String(), nil
 }
 
 func (sw *Switch) filterPeer(p Peer) error {
