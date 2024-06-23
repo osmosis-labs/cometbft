@@ -56,7 +56,6 @@ func (ps *PeerSet) Add(peer Peer) error {
 	// iterating over the ps.list slice.
 	ps.list = append(ps.list, peer)
 	ps.lookup[peer.ID()] = &peerSetItem{peer, index}
-
 	return nil
 }
 
@@ -140,7 +139,6 @@ func (ps *PeerSet) Remove(peer Peer) bool {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, peer.ID())
-
 	return true
 }
 
