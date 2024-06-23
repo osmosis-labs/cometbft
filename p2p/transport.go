@@ -527,7 +527,6 @@ func (mt *MultiplexTransport) wrapPeer(
 		cfg.chDescs,
 		cfg.onPeerError,
 		cfg.mlc,
-		cfg.sameRegion,
 		PeerMetrics(cfg.metrics),
 	)
 

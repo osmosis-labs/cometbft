@@ -153,7 +153,6 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		sw.chDescs,
 		sw.StopPeerForError,
 		sw.mlc,
-		sw.config.SameRegion,
 	)
 
 	if err = sw.addPeer(p); err != nil {
@@ -305,6 +304,9 @@ func (book *AddrBookMock) MarkGood(ID) {}
 func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok
+}
+func (book *AddrBookMock) GetAddressRegion(addr *NetAddress) string {
+	return ""
 }
 func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
 	delete(book.Addrs, addr.String())

@@ -45,7 +45,7 @@ type Peer interface {
 	SetRemovalFailed()
 	GetRemovalFailed() bool
 
-	GetRegion() string
+	// GetRegion() string
 }
 
 //----------------------------------------------------------
@@ -129,7 +129,7 @@ type peer struct {
 	// When removal of a peer fails, we set this flag
 	removalAttemptFailed bool
 
-	region string
+	// region string
 }
 
 type PeerOption func(*peer)
@@ -143,22 +143,21 @@ func newPeer(
 	chDescs []*cmtconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	mlc *metricsLabelCache,
-	sameRegion bool,
 	options ...PeerOption,
 ) *peer {
-	var peerRegion string
-	if sameRegion {
-		// Note if the new peer is in the same region as us
-		peerIp, err := nodeInfo.NetAddress()
-		if err != nil {
-			fmt.Print("Failed to get IP from nodeInfo", "err", err)
-		}
-		peerRegionInternal, err := getRegionFromIP(peerIp.IP.String())
-		if err != nil {
-			fmt.Print("Failed to get region from IP", "err", err)
-		}
-		peerRegion = peerRegionInternal
-	}
+	// var peerRegion string
+	// if sameRegion {
+	// 	// Note if the new peer is in the same region as us
+	// 	peerIp, err := nodeInfo.NetAddress()
+	// 	if err != nil {
+	// 		fmt.Print("Failed to get IP from nodeInfo", "err", err)
+	// 	}
+	// 	peerRegionInternal, err := getRegionFromIP(peerIp.IP.String())
+	// 	if err != nil {
+	// 		fmt.Print("Failed to get region from IP", "err", err)
+	// 	}
+	// 	peerRegion = peerRegionInternal
+	// }
 
 	p := &peer{
 		peerConn:      pc,
@@ -168,7 +167,7 @@ func newPeer(
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 		mlc:           mlc,
-		region:        peerRegion,
+		// region:        peerRegion,
 	}
 
 	p.mconn = createMConnection(
@@ -457,6 +456,6 @@ func createMConnection(
 	)
 }
 
-func (p *peer) GetRegion() string {
-	return p.region
-}
+// func (p *peer) GetRegion() string {
+// 	return p.region
+// }

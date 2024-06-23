@@ -50,11 +50,11 @@ type AddrBook interface {
 
 	// Add and remove an address
 	AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
-	PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
 	RemoveAddress(*p2p.NetAddress)
 
 	// Check if the address is in the book
 	HasAddress(*p2p.NetAddress) bool
+	GetAddressRegion(addr *p2p.NetAddress) string
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
@@ -65,6 +65,7 @@ type AddrBook interface {
 	// Pick an address to dial
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 	PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
+	PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
 
 	// Mark address
 	MarkGood(p2p.ID)
@@ -271,6 +272,17 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 	return ka != nil
 }
 
+func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) string {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	ka, exists := a.addrLookup[addr.ID]
+	if !exists {
+		return ""
+	}
+	return ka.Region
+}
+
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
@@ -340,6 +352,8 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 				}
 				ka.Region = region
 				a.addrLookup[ka.ID()] = ka
+			} else {
+				fmt.Println("PickAddressWithRegion Region already set", ka.Addr, "region", ka.Region)
 			}
 			if ka.Region == region {
 				fmt.Println("PickAddressWithRegion Adding address", ka.Addr, "region", ka.Region)
@@ -424,6 +438,8 @@ func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string
 				}
 				ka.Region = region
 				a.addrLookup[ka.ID()] = ka
+			} else {
+				fmt.Println("PickAddressNotInRegion Region already set", ka.Addr, "region", ka.Region)
 			}
 			if ka.Region != region {
 				fmt.Println("PickAddressNotInRegion Adding address", ka.Addr, "region", ka.Region)

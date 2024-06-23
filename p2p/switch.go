@@ -56,6 +56,7 @@ type AddrBook interface {
 	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
+	GetAddressRegion(*NetAddress) string
 	Save()
 }
 
@@ -414,13 +415,13 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 		sw.metrics.Peers.Add(float64(-1))
 		if peer.IsOutbound() {
 			if sw.config.SameRegion {
-				if peer.GetRegion() != sw.config.MyRegion {
+				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.config.MyRegion {
 					sw.config.CurrentNumOutboundPeersInOtherRegion--
 				}
 			}
 		} else {
 			if sw.config.SameRegion {
-				if peer.GetRegion() != sw.config.MyRegion {
+				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.config.MyRegion {
 					sw.config.CurrentNumInboundPeersInOtherRegion--
 				}
 			}
@@ -754,8 +755,8 @@ func (sw *Switch) acceptRoutine() {
 
 		if sw.config.SameRegion {
 			// Note if the new peer is in the same region as us
-			fmt.Println("Checking if peer is same region. My region: ", sw.config.MyRegion, " Peer region: ", p.GetRegion())
-			isSameRegion := p.GetRegion() == sw.config.MyRegion
+			fmt.Println("Checking if peer is same region. My region: ", sw.config.MyRegion, " Peer region: ", sw.addrBook.GetAddressRegion(p.SocketAddr()))
+			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.config.MyRegion
 
 			if !isSameRegion {
 				// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
@@ -981,9 +982,9 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.SameRegion {
-		if p.IsOutbound() && p.GetRegion() != sw.config.MyRegion {
+		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
 			sw.config.CurrentNumOutboundPeersInOtherRegion++
-		} else if !p.IsOutbound() && p.GetRegion() != sw.config.MyRegion {
+		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
 			sw.config.CurrentNumInboundPeersInOtherRegion++
 		}
 	}
