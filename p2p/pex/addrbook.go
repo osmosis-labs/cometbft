@@ -328,7 +328,7 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 			region, err := getRegionFromIP(ka.Addr.IP.String())
 			if err != nil {
 				a.Logger.Error("Failed to get region from IP", "err", err)
-				continue
+				return nil
 			}
 			ka.Region = region
 			a.addrLookup[ka.ID()] = ka
@@ -1154,8 +1154,9 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 }
 
 type ipInfo struct {
-	Status  string
-	Country string
+	Status      string
+	Country     string
+	CountryCode string
 }
 
 func getRegionFromIP(ip string) (string, error) {
@@ -1178,9 +1179,9 @@ func getRegionFromIP(ip string) (string, error) {
 		return "", fmt.Errorf("failed to get country from IP %s", ip)
 	}
 
-	country := countries.ByName(ipInfo.Country)
+	country := countries.ByName(ipInfo.CountryCode)
 	if country == countries.Unknown {
-		return "", fmt.Errorf("could not find country: %s", ipInfo.Country)
+		return "", fmt.Errorf("could not find country: %s", ipInfo.CountryCode)
 	}
 
 	return country.Info().Region.String(), nil
