@@ -332,6 +332,7 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 			}
 			count++
 			if ka.Region == "" {
+				fmt.Println("PickAddressWithRegion Getting region from IP", ka.Addr.IP.String())
 				region, err := getRegionFromIP(ka.Addr.IP.String())
 				if err != nil {
 					a.Logger.Error("Failed to get region from IP", "err", err)
@@ -341,7 +342,11 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 				a.addrLookup[ka.ID()] = ka
 			}
 			if ka.Region == region {
+				fmt.Println("PickAddressWithRegion Adding address", ka.Addr, "region", ka.Region)
 				filteredBucket[addrStr] = ka
+			}
+			if ka.Region != region {
+				fmt.Println("PickAddressWithRegion Skipping address", ka.Addr, "region", ka.Region)
 			}
 		}
 
@@ -383,42 +388,65 @@ func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
 
-	// pick a random peer from a random bucket
-	var bucket map[string]*knownAddress
-	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
-	if (pickFromOldBucket && a.nOld == 0) ||
-		(!pickFromOldBucket && a.nNew == 0) {
-		return nil
-	}
-	// loop until we pick a random non-empty bucket
-	for len(bucket) == 0 {
-		if pickFromOldBucket {
-			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
-		} else {
-			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
+	// Try up to 3 times to pick a non-empty bucket
+	for attempts := 0; attempts < 3; attempts++ {
+		// pick a random peer from a random bucket
+		var bucket map[string]*knownAddress
+		pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
+		if (pickFromOldBucket && a.nOld == 0) ||
+			(!pickFromOldBucket && a.nNew == 0) {
+			return nil
+		}
+		// loop until we pick a random non-empty bucket
+		for len(bucket) == 0 {
+			if pickFromOldBucket {
+				bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
+			} else {
+				bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
+			}
+		}
+
+		// Filter the bucket by region
+		filteredBucket := make(map[string]*knownAddress)
+		// TEMP, only adding max of 5 from bucket
+		count := 0
+		for addrStr, ka := range bucket {
+			if count > 5 {
+				break
+			}
+			count++
+			if ka.Region == "" {
+				fmt.Println("PickAddressNotInRegion Getting region from IP", ka.Addr.IP.String())
+				region, err := getRegionFromIP(ka.Addr.IP.String())
+				if err != nil {
+					a.Logger.Error("Failed to get region from IP", "err", err)
+					return nil
+				}
+				ka.Region = region
+				a.addrLookup[ka.ID()] = ka
+			}
+			if ka.Region != region {
+				fmt.Println("PickAddressNotInRegion Adding address", ka.Addr, "region", ka.Region)
+				filteredBucket[addrStr] = ka
+			}
+			if ka.Region == region {
+				fmt.Println("PickAddressNotInRegion Skipping address", ka.Addr, "region", ka.Region)
+			}
+		}
+
+		if len(filteredBucket) > 0 {
+			// pick a random index and loop over the map to return that index
+			randIndex := a.rand.Intn(len(filteredBucket))
+			for _, ka := range filteredBucket {
+				if randIndex == 0 {
+					return ka.Addr
+				}
+				randIndex--
+			}
 		}
 	}
 
-	// Filter the bucket to exclude the specified region
-	filteredBucket := make(map[string]*knownAddress)
-	for addrStr, ka := range bucket {
-		if ka.Region != region {
-			filteredBucket[addrStr] = ka
-		}
-	}
-
-	if len(filteredBucket) == 0 {
-		return nil
-	}
-
-	// pick a random index and loop over the map to return that index
-	randIndex := a.rand.Intn(len(filteredBucket))
-	for _, ka := range filteredBucket {
-		if randIndex == 0 {
-			return ka.Addr
-		}
-		randIndex--
-	}
+	// If no suitable bucket is found after 3 attempts, return nil
 	return nil
 }
 
@@ -1184,7 +1212,7 @@ func getRegionFromIP(ip string) (string, error) {
 
 	var ipInfo ipInfo
 	json.Unmarshal(body, &ipInfo)
-	fmt.Println("ipInfoPeer", ipInfo)
+	// fmt.Println("ipInfoPeer", ipInfo)
 
 	if ipInfo.Status != "success" {
 		return "", fmt.Errorf("failed to get country from IP %s", ip)
