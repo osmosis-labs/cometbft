@@ -809,28 +809,28 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	// Check if adding this peer would exceed the percentage of in/outbound peers in the same region
-	if sw.config.SameRegion {
-		// Note if the new peer is in the same region as us
-		peerRegion, err := getRegionFromIP(addr.IP.String())
-		if err != nil {
-			sw.Logger.Error("Failed to get region from IP", "err", err)
-			return err
-		}
-		fmt.Println("peerRegion", peerRegion)
-		isSameRegion := peerRegion == sw.config.MyRegion
+	// // Check if adding this peer would exceed the percentage of in/outbound peers in the same region
+	// if sw.config.SameRegion {
+	// 	// Note if the new peer is in the same region as us
+	// 	peerRegion, err := getRegionFromIP(addr.IP.String())
+	// 	if err != nil {
+	// 		sw.Logger.Error("Failed to get region from IP", "err", err)
+	// 		return err
+	// 	}
+	// 	fmt.Println("peerRegion", peerRegion)
+	// 	isSameRegion := peerRegion == sw.config.MyRegion
 
-		if !isSameRegion {
-			// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
-			// TODO check this formula
-			fmt.Println("peer is outbound from addOutboundPeerWithConfig")
-			maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
-			if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
-				return ErrRejected{id: ID(addr.ID), err: fmt.Errorf("exceeds max percent peers in same region")}
-				// return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
-			}
-		}
-	}
+	// 	if !isSameRegion {
+	// 		// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
+	// 		// TODO check this formula
+	// 		fmt.Println("peer is outbound from addOutboundPeerWithConfig")
+	// 		maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
+	// 		if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
+	// 			return ErrRejected{id: ID(addr.ID), err: fmt.Errorf("exceeds max percent peers in same region")}
+	// 			// return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
+	// 		}
+	// 	}
+	// }
 
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:       sw.chDescs,
@@ -996,4 +996,8 @@ func (sw *Switch) addPeer(p Peer) error {
 	sw.Logger.Debug("Added peer", "peer", p)
 
 	return nil
+}
+
+func (sw *Switch) GetConfig() *config.P2PConfig {
+	return sw.config
 }

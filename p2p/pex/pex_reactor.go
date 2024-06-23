@@ -430,14 +430,23 @@ func (r *Reactor) ensurePeersRoutine() {
 
 	// fire once immediately.
 	// ensures we dial the seeds right away if the book is empty
-	r.ensurePeers()
+	swConfig := r.Switch.GetConfig()
+	if swConfig.SameRegion {
+		r.ensurePeersRegion()
+	} else {
+		r.ensurePeers()
+	}
 
 	// fire periodically
 	ticker := time.NewTicker(r.ensurePeersPeriod)
 	for {
 		select {
 		case <-ticker.C:
-			r.ensurePeers()
+			if swConfig.SameRegion {
+				r.ensurePeersRegion()
+			} else {
+				r.ensurePeers()
+			}
 		case <-r.Quit():
 			ticker.Stop()
 			return
@@ -450,6 +459,124 @@ func (r *Reactor) ensurePeersRoutine() {
 // heuristic that we haven't perfected yet, or, perhaps is manually edited by
 // the node operator. It should not be used to compute what addresses are
 // already connected or not.
+func (r *Reactor) ensurePeersRegion() {
+	var (
+		out, in, dial = r.Switch.NumPeers()
+		numToDial     = r.Switch.MaxNumOutboundPeers() - (out + dial)
+	)
+	r.Logger.Info(
+		"Ensure peers",
+		"numOutPeers", out,
+		"numInPeers", in,
+		"numDialing", dial,
+		"numToDial", numToDial,
+	)
+
+	if numToDial <= 0 {
+		return
+	}
+
+	// bias to prefer more vetted peers when we have fewer connections.
+	// not perfect, but somewhat ensures that we prioritize connecting to more-vetted
+	// NOTE: range here is [10, 90]. Too high ?
+	newBias := cmtmath.MinInt(out, 8)*10 + 10
+
+	toDialInRegion := make(map[p2p.ID]*p2p.NetAddress)
+	toDialOutOfRegion := make(map[p2p.ID]*p2p.NetAddress)
+	// Try maxAttempts times to pick numToDial addresses to dial
+	maxAttempts := numToDial * 3
+
+	// Determine how many in region and how many out of region peers we need to dial
+	swConfig := r.Switch.GetConfig()
+	currentOutboundInOtherRegion := swConfig.CurrentNumOutboundPeersInOtherRegion
+	maxOutboundPeersInOtherRegion := swConfig.MaxNumOutboundPeers - int(swConfig.MaxPercentPeersInSameRegion*float64(swConfig.MaxNumOutboundPeers))
+
+	numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
+	numToDialInSameRegion := numToDial - numToDialInOtherRegion
+
+	fmt.Println("numToDialInSameRegion", numToDialInSameRegion)
+	fmt.Println("numToDialInOtherRegion", numToDialInOtherRegion)
+
+	// First iteration: Dial peers in the same region
+	for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion; i++ {
+		try := r.book.PickAddressWithRegion(newBias, swConfig.MyRegion)
+		if try == nil {
+			continue
+		}
+		if _, selected := toDialInRegion[try.ID]; selected {
+			continue
+		}
+		if r.Switch.IsDialingOrExistingAddress(try) {
+			continue
+		}
+		toDialInRegion[try.ID] = try
+	}
+
+	// Second iteration: Dial peers in other regions
+	for i := 0; i < maxAttempts && len(toDialOutOfRegion) < numToDialInOtherRegion; i++ {
+		try := r.book.PickAddressNotInRegion(newBias, swConfig.MyRegion)
+		if try == nil {
+			continue
+		}
+		if _, selected := toDialOutOfRegion[try.ID]; selected {
+			continue
+		}
+		if r.Switch.IsDialingOrExistingAddress(try) {
+			continue
+		}
+		toDialOutOfRegion[try.ID] = try
+	}
+
+	// Combine the two maps
+	toDial := make(map[p2p.ID]*p2p.NetAddress)
+	for id, addr := range toDialInRegion {
+		toDial[id] = addr
+	}
+	for id, addr := range toDialOutOfRegion {
+		toDial[id] = addr
+	}
+
+	// Dial picked addresses
+	for _, addr := range toDial {
+		go func(addr *p2p.NetAddress) {
+			err := r.dialPeer(addr)
+			if err != nil {
+				switch err.(type) {
+				case errMaxAttemptsToDial, errTooEarlyToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				default:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				}
+			}
+		}(addr)
+	}
+
+	if r.book.NeedMoreAddrs() {
+		// Check if banned nodes can be reinstated
+		r.book.ReinstateBadPeers()
+	}
+
+	if r.book.NeedMoreAddrs() {
+
+		// 1) Pick a random peer and ask for more.
+		peers := r.Switch.Peers().List()
+		peersCount := len(peers)
+		if peersCount > 0 {
+			peer := peers[cmtrand.Int()%peersCount]
+			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
+			r.RequestAddrs(peer)
+		}
+
+		// 2) Dial seeds if we are not dialing anyone.
+		// This is done in addition to asking a peer for addresses to work-around
+		// peers not participating in PEX.
+		if len(toDial) == 0 {
+			r.Logger.Info("No addresses to dial. Falling back to seeds")
+			r.dialSeeds()
+		}
+	}
+}
+
 func (r *Reactor) ensurePeers() {
 	var (
 		out, in, dial = r.Switch.NumPeers()
@@ -468,7 +595,7 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	// bias to prefer more vetted peers when we have fewer connections.
-	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
+	// not perfect, but somewhat ensures that we prioritize connecting to more-vetted
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmtmath.MinInt(out, 8)*10 + 10
 
