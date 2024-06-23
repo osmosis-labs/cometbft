@@ -324,7 +324,13 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 
 		// Filter the bucket by region
 		filteredBucket := make(map[string]*knownAddress)
+		// TEMP, only adding max of 5 from bucket
+		count := 0
 		for addrStr, ka := range bucket {
+			if count > 5 {
+				break
+			}
+			count++
 			if ka.Region == "" {
 				region, err := getRegionFromIP(ka.Addr.IP.String())
 				if err != nil {
