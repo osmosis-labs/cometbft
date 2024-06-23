@@ -755,14 +755,14 @@ func (sw *Switch) acceptRoutine() {
 				// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
 				// TODO check this formula
 				if p.IsOutbound() {
-					fmt.Println("peer is outbound")
+					fmt.Println("peer is outbound acceptRoutine")
 					maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
 					if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
 					}
 				} else {
-					fmt.Println("peer is inbound")
+					fmt.Println("peer is inbound acceptRoutine")
 					maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))
 					if sw.config.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
@@ -817,12 +817,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		if !isSameRegion {
 			// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
 			// TODO check this formula
-			fmt.Println("peer is outbound")
-			fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion", sw.config.CurrentNumOutboundPeersInOtherRegion)
-			fmt.Println("sw.config.MaxPercentPeersInSameRegion", sw.config.MaxPercentPeersInSameRegion)
-			fmt.Println("sw.config.MaxNumOutboundPeers", sw.config.MaxNumOutboundPeers)
-			fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion+1", sw.config.CurrentNumOutboundPeersInOtherRegion+1)
-			fmt.Println("1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers", (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers))
+			fmt.Println("peer is outbound from addOutboundPeerWithConfig")
 			maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
 			if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 				return ErrRejected{id: ID(addr.ID), err: fmt.Errorf("exceeds max percent peers in same region")}
