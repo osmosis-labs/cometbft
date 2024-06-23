@@ -410,14 +410,12 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
 		if peer.IsOutbound() {
-			sw.peers.numOutbound--
 			if sw.config.SameRegion {
 				if peer.GetRegion() != sw.config.MyRegion {
 					sw.config.CurrentNumOutboundPeersInOtherRegion--
 				}
 			}
 		} else {
-			sw.peers.numInbound--
 			if sw.config.SameRegion {
 				if peer.GetRegion() != sw.config.MyRegion {
 					sw.config.CurrentNumInboundPeersInOtherRegion--
@@ -762,11 +760,9 @@ func (sw *Switch) acceptRoutine() {
 				// TODO check this formula
 				if p.IsOutbound() {
 					fmt.Println("peer is outbound")
-					fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion", sw.config.CurrentNumOutboundPeersInOtherRegion)
-					fmt.Println("sw.config.MaxPercentPeersInSameRegion", sw.config.MaxPercentPeersInSameRegion)
 					fmt.Println("sw.config.MaxNumOutboundPeers", sw.config.MaxNumOutboundPeers)
-					fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion+1", sw.config.CurrentNumOutboundPeersInOtherRegion+1)
-					fmt.Println("1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers", (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumOutboundPeers))
+					fmt.Println("int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))", int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers)))
+					fmt.Println("sw.config.CurrentNumOutboundPeersInOtherRegion", sw.config.CurrentNumOutboundPeersInOtherRegion)
 					maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
 					if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
@@ -775,11 +771,9 @@ func (sw *Switch) acceptRoutine() {
 					}
 				} else {
 					fmt.Println("peer is inbound")
-					fmt.Println("sw.config.CurrentNumInboundPeersInOtherRegion", sw.config.CurrentNumInboundPeersInOtherRegion)
-					fmt.Println("sw.config.MaxPercentPeersInSameRegion", sw.config.MaxPercentPeersInSameRegion)
 					fmt.Println("sw.config.MaxNumInboundPeers", sw.config.MaxNumInboundPeers)
-					fmt.Println("sw.config.CurrentNumInboundPeersInOtherRegion+1", sw.config.CurrentNumInboundPeersInOtherRegion+1)
-					fmt.Println("1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumInboundPeers", (1-sw.config.MaxPercentPeersInSameRegion)*float64(sw.config.MaxNumInboundPeers))
+					fmt.Println("int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))", int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers)))
+					fmt.Println("sw.config.CurrentNumInboundPeersInOtherRegion", sw.config.CurrentNumInboundPeersInOtherRegion)
 					maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))
 					if sw.config.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
