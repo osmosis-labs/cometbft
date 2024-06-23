@@ -323,13 +323,20 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 	// Filter the bucket by region
 	filteredBucket := make(map[string]*knownAddress)
 	for addrStr, ka := range bucket {
+		if ka.Region == "" {
+			fmt.Println("Region is empty")
+			region, err := getRegionFromIP(ka.Addr.IP.String())
+			if err != nil {
+				a.Logger.Error("Failed to get region from IP", "err", err)
+				continue
+			}
+			ka.Region = region
+			a.addrLookup[ka.ID()] = ka
+		}
+		fmt.Println("Region", ka.Region)
 		if ka.Region == region {
 			filteredBucket[addrStr] = ka
 		}
-	}
-
-	if len(filteredBucket) == 0 {
-		return nil
 	}
 
 	// pick a random index and loop over the map to return that index
