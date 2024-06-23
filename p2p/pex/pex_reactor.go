@@ -535,6 +535,7 @@ func (r *Reactor) ensurePeersRegion() {
 	for id, addr := range toDialOutOfRegion {
 		toDial[id] = addr
 	}
+	fmt.Println("toDial", toDial)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
