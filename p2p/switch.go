@@ -790,19 +790,35 @@ func (sw *Switch) acceptRoutine() {
 			// Note if the new peer is in the same region as us
 			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.MyRegion
 
-			if !isSameRegion {
-				// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
-				// TODO check this formula
+			// Calculate the maximum allowed peers for both same region and other regions
+			maxOutboundPeersInSameRegion := int(sw.config.MaxPercentPeersInSameRegion * float64(sw.config.MaxNumOutboundPeers))
+			maxInboundPeersInSameRegion := int(sw.config.MaxPercentPeersInSameRegion * float64(sw.config.MaxNumInboundPeers))
+			maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - maxOutboundPeersInSameRegion
+			maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - maxInboundPeersInSameRegion
+
+			if isSameRegion {
+				out, in, _ := sw.NumPeers()
+
 				if p.IsOutbound() {
-					maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
-					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
+					if (out-sw.CurrentNumOutboundPeersInOtherRegion)+1 > maxOutboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
 					}
 				} else {
-					maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))
-					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
+					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
+						continue
+					}
+				}
+			} else {
+				if p.IsOutbound() {
+					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
+						sw.Logger.Error("exceeds max percent peers in other regions")
+						continue
+					}
+				} else {
+					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
+						sw.Logger.Error("exceeds max percent peers in other regions")
 						continue
 					}
 				}
