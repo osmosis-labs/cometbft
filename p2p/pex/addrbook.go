@@ -285,6 +285,7 @@ func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		ka = newKnownAddress(addr, nil)
 		ka.Region = region
 		a.addrLookup[addr.ID] = ka
 		return region, nil
