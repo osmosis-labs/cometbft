@@ -431,14 +431,14 @@ func (r *Reactor) ensurePeersRoutine() {
 	// fire once immediately.
 	// ensures we dial the seeds right away if the book is empty
 	swConfig := r.Switch.GetConfig()
-	r.ensurePeers(swConfig.SameRegion)
+	r.ensurePeers(swConfig.RegionAware)
 
 	// fire periodically
 	ticker := time.NewTicker(r.ensurePeersPeriod)
 	for {
 		select {
 		case <-ticker.C:
-			r.ensurePeers(swConfig.SameRegion)
+			r.ensurePeers(swConfig.RegionAware)
 		case <-r.Quit():
 			ticker.Stop()
 			return
@@ -446,7 +446,7 @@ func (r *Reactor) ensurePeersRoutine() {
 	}
 }
 
-// ensurePeersCommon ensures that sufficient peers are connected. (once)
+// ensurePeers ensures that sufficient peers are connected. (once)
 //
 // heuristic that we haven't perfected yet, or, perhaps is manually edited by
 // the node operator. It should not be used to compute what addresses are

@@ -635,7 +635,7 @@ type P2PConfig struct { //nolint: maligned
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
 
 	// Configs for connecting to peers in the same region
-	SameRegion                      bool    `mapstructure:"same_region"`
+	RegionAware                     bool    `mapstructure:"region_aware"`
 	MaxPercentPeersInSameRegion     float64 `mapstructure:"max_percent_peers_in_same_region"`
 	RegionQueriesPerPeerQueryPeriod int     `mapstructure:"region_queries_per_peer_query_period"`
 }
@@ -662,7 +662,7 @@ func DefaultP2PConfig() *P2PConfig {
 		TestDialFail:                    false,
 		TestFuzz:                        false,
 		TestFuzzConfig:                  DefaultFuzzConnConfig(),
-		SameRegion:                      false,
+		RegionAware:                     false,
 		MaxPercentPeersInSameRegion:     DefaultMaxPercentPeersInSameRegion,
 		RegionQueriesPerPeerQueryPeriod: DefaultRegionQueriesPerPeerQueryPeriod,
 	}

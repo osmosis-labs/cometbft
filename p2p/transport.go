@@ -53,7 +53,6 @@ type peerConfig struct {
 	msgTypeByChID map[byte]proto.Message
 	metrics       *Metrics
 	mlc           *metricsLabelCache
-	sameRegion    bool
 }
 
 // Transport emits and connects to Peers. The implementation of Peer is left to

@@ -335,12 +335,12 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
-# If same_region is set to true, the defined max_percent_peers_in_same_region
+# If region_aware is set to true, the defined max_percent_peers_in_same_region
 # is the percent of both inbound and outbound that must be from the same region as this node.
 # The percent can be at max 0.9 (90%), as we hardcode this max to allow cross-geo connectivity.
 # E.g. if max_num_inbound_peers and max_num_inbound_peers are both set to 10, and max_percent_peers_in_same_region
 # is set to 0.9 (90%), then 9 peers must be from the same region as this node, and 1 peer must be from a different region.
-same_region = {{ .P2P.SameRegion }}
+region_aware = {{ .P2P.RegionAware }}
 max_percent_peers_in_same_region = {{ .P2P.MaxPercentPeersInSameRegion }}
 # The amount of times we can query a region for a peer in a given period.
 # E.g. The current peer query period is hard coded to 30 seconds. If our API rate limits us to 40 queries per minute,
