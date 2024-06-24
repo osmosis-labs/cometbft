@@ -40,8 +40,8 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultMaxPercentPeersInSameRegion     = float64(0.9)
-	DefaultRegionQueriesPerPeerQueryPeriod = 20
+	DefaultMaxPercentPeersInSameRegion     = float64(0.9) // Target 90% of peers in the same region
+	DefaultRegionQueriesPerPeerQueryPeriod = 20           // Query 20 peers per peer query period (30s), used to prevent hitting rate limit on free API
 
 	DefaultTendermintDir = ".cometbft"
 	defaultConfigDir     = "config"

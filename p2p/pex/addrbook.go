@@ -64,8 +64,8 @@ type AddrBook interface {
 
 	// Pick an address to dial
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
-	PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
-	PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
+	PickAddressInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
+	PickAddressOutsideRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
 	ResetCurRegionQueryCount()
 
 	// Mark address
@@ -116,6 +116,7 @@ type addrBook struct {
 
 	wg sync.WaitGroup
 
+	// Region trackers
 	isRegionTracking                bool
 	regionQueriesPerPeerQueryPeriod int
 	curRegionQueryCount             int
@@ -229,7 +230,7 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	defer a.mtx.Unlock()
 
 	if a.isRegionTracking {
-		region, err := getRegionFromIP(addr.IP.String())
+		region, err := a.getRegionFromIP(addr.IP.String())
 		if err != nil {
 			a.Logger.Error("Failed to get region from IP", "err", err)
 			return err
@@ -298,7 +299,14 @@ func (a *addrBook) Empty() bool {
 	return a.Size() == 0
 }
 
-func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegion bool, useRegion bool) *p2p.NetAddress {
+// pickAddressInternal picks an address to connect to from the address book.
+// The address is selected randomly from either an old or new bucket based on the
+// biasTowardsNewAddrs argument, which must be between [0, 100] (values outside this range
+// are truncated). This argument determines the bias towards picking an address from a new bucket.
+// The function returns nil if the AddrBook is empty or if it tries to pick from an empty bucket.
+// If useRegion is true, the function filters addresses by region, matching or excluding the specified region
+// based on the matchRegion argument.
+func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, matchRegion bool, useRegion bool) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -320,7 +328,8 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
 
-	// Try up to 3 times to pick a non-empty bucket
+	// Because we filter buckets by region, there are times where a bucket has either no addresses in the desired region,
+	// or we have no more region queries left in the current period. In these cases, we will attempt to pick from a different bucket.
 	for attempts := 0; attempts < 3; attempts++ {
 		// pick a random peer from a random bucket
 		var bucket map[string]*knownAddress
@@ -329,6 +338,7 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 			(!pickFromOldBucket && a.nNew == 0) {
 			return nil
 		}
+
 		// loop until we pick a random non-empty bucket
 		for len(bucket) == 0 {
 			if pickFromOldBucket {
@@ -342,41 +352,25 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 			// Filter the bucket by region
 			filteredBucket := make(map[string]*knownAddress)
 			for addrStr, ka := range bucket {
+				// If the region is not set, we will attempt to get it from the IP address
+				// if we have not exceeded the region query limit for the current period.
 				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
-					// fmt.Println("Getting region from IP", ka.Addr.IP.String())
-					region, err := getRegionFromIP(ka.Addr.IP.String())
+					region, err := a.getRegionFromIP(ka.Addr.IP.String())
 					if err != nil {
 						a.Logger.Error("Failed to get region from IP", "err", err)
 						return nil
 					}
 					ka.Region = region
 					a.addrLookup[ka.ID()] = ka
-					a.curRegionQueryCount++
-				} else {
-					//fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
 				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
-					// fmt.Println("Adding address", ka.Addr, "region", ka.Region)
 					filteredBucket[addrStr] = ka
-				} else {
-					// fmt.Println("Skipping address", ka.Addr, "region", ka.Region)
 				}
 			}
+			bucket = filteredBucket
+		}
 
-			if len(filteredBucket) > 0 {
-				// pick a random index and loop over the map to return that index
-				randIndex := a.rand.Intn(len(filteredBucket))
-				for _, ka := range filteredBucket {
-					if randIndex == 0 {
-						if !matchRegion {
-							fmt.Println("THIS IP USED FOR NON SAME REGION", ka.Addr.IP.String(), "REGION", ka.Region)
-						}
-						return ka.Addr
-					}
-					randIndex--
-				}
-			}
-		} else {
+		if len(bucket) > 0 {
 			// pick a random index and loop over the map to return that index
 			randIndex := a.rand.Intn(len(bucket))
 			for _, ka := range bucket {
@@ -392,16 +386,30 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 	return nil
 }
 
-func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
-	return a.pickAddress(biasTowardsNewAddrs, region, true, true)
+// PickAddressInRegion picks an address to connect to from the address book,
+// with a bias towards new addresses and within a specified region.
+// The biasTowardsNewAddrs argument must be between [0, 100] and determines
+// the bias towards picking an address from a new bucket.
+// The region argument specifies the region to match.
+func (a *addrBook) PickAddressInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
+	return a.pickAddressInternal(biasTowardsNewAddrs, region, true, true)
 }
 
-func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
-	return a.pickAddress(biasTowardsNewAddrs, region, false, true)
+// PickAddressOutsideRegion picks an address to connect to from the address book,
+// with a bias towards new addresses and outside a specified region.
+// The biasTowardsNewAddrs argument must be between [0, 100] and determines
+// the bias towards picking an address from a new bucket.
+// The region argument specifies the region to exclude.
+func (a *addrBook) PickAddressOutsideRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
+	return a.pickAddressInternal(biasTowardsNewAddrs, region, false, true)
 }
 
+// PickAddress picks an address to connect to from the address book,
+// with a bias towards new addresses, without considering regions.
+// The biasTowardsNewAddrs argument must be between [0, 100] and determines
+// the bias towards picking an address from a new bucket.
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
-	return a.pickAddress(biasTowardsNewAddrs, "", false, false)
+	return a.pickAddressInternal(biasTowardsNewAddrs, "", false, false)
 }
 
 // MarkGood implements AddrBook - it marks the peer as good and
@@ -723,6 +731,8 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	return oldest
 }
 
+// addAddressCommon adds the address to a "new" bucket. if its already in one,
+// it only adds it probabilistically
 func (a *addrBook) addAddressCommon(addr, src *p2p.NetAddress) (*knownAddress, error) {
 	if addr == nil || src == nil {
 		return nil, ErrAddrBookNilAddr{addr, src}
@@ -777,6 +787,10 @@ func (a *addrBook) addAddressCommon(addr, src *p2p.NetAddress) (*knownAddress, e
 	return ka, nil
 }
 
+// addAddressWithRegion adds an address to a "new" bucket with a specified region.
+// If the address is already in a bucket, it only adds it probabilistically.
+// Returns an error if the address is non-routable or if it fails to calculate the bucket.
+// The region argument specifies the region to associate with the address.
 func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string) error {
 	ka, err := a.addAddressCommon(addr, src)
 	if err != nil || ka == nil {
@@ -791,6 +805,9 @@ func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string
 	return a.addToNewBucket(ka, bucket)
 }
 
+// addAddress adds an address to a "new" bucket.
+// If the address is already in a bucket, it only adds it probabilistically.
+// Returns an error if the address is non-routable or if it fails to calculate the bucket.
 func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	ka, err := a.addAddressCommon(addr, src)
 	if err != nil || ka == nil {
@@ -1056,12 +1073,24 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 
 type ipInfo struct {
 	Status      string
-	Country     string
 	CountryCode string
 }
 
-func getRegionFromIP(ip string) (string, error) {
-	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country,countryCode", ip))
+// getRegionFromIP retrieves the region associated with a given IP address.
+// It sends an HTTP request to the ip-api service to get the country code for the IP address,
+// then maps the country code to a region using the countries package.
+// The function increments the current region query count and returns an error if the request fails
+// or if the country code cannot be mapped to a region.
+//
+// Parameters:
+// - ip: The IP address to look up.
+//
+// Returns:
+// - A string representing the region associated with the IP address.
+// - An error if the region cannot be determined.
+func (a *addrBook) getRegionFromIP(ip string) (string, error) {
+	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,countryCode", ip))
+	a.curRegionQueryCount++
 	if err != nil {
 		return "", err
 	}

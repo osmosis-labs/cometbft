@@ -508,7 +508,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		// First iteration: Dial peers in the same region
 		for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion+reserveSizeInRegion; i++ {
-			try := r.book.PickAddressWithRegion(newBias, r.Switch.MyRegion)
+			try := r.book.PickAddressInRegion(newBias, r.Switch.MyRegion)
 			if try == nil {
 				continue
 			}
@@ -523,7 +523,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		// Second iteration: Dial peers in other regions
 		for i := 0; i < maxAttempts && len(toDialOutOfRegion) < numToDialInOtherRegion+reserveSizeOutOfRegion; i++ {
-			try := r.book.PickAddressNotInRegion(newBias, r.Switch.MyRegion)
+			try := r.book.PickAddressOutsideRegion(newBias, r.Switch.MyRegion)
 			if try == nil {
 				continue
 			}
