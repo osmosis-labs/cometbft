@@ -940,8 +940,10 @@ func (sw *Switch) addPeer(p Peer) error {
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.SameRegion {
 		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
+			fmt.Println("adding peer outbound not in region: ", p.SocketAddr().IP.String())
 			sw.config.CurrentNumOutboundPeersInOtherRegion++
 		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
+			fmt.Println("adding peer inbound not in region: ", p.SocketAddr().IP.String())
 			sw.config.CurrentNumInboundPeersInOtherRegion++
 		}
 	}
