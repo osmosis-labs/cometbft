@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	// TODO: Maybe revert
-	defaultDialTimeout      = 3 * time.Second
+	defaultDialTimeout      = time.Second
 	defaultFilterTimeout    = 5 * time.Second
 	defaultHandshakeTimeout = 3 * time.Second
 )
