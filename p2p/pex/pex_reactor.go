@@ -485,7 +485,6 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 	maxAttempts := numToDial * 3
 
 	if regionAware {
-		r.book.ResetCurRegionQueryCount()
 		toDialInRegion := make(map[p2p.ID]*p2p.NetAddress)
 		toDialOutOfRegion := make(map[p2p.ID]*p2p.NetAddress)
 
@@ -495,6 +494,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 		numToDialInSameRegion := numToDial - numToDialInOtherRegion
+		fmt.Println("numToDialInSameRegion", numToDialInSameRegion, "numToDialInOtherRegion", numToDialInOtherRegion)
 
 		reserveSizeInRegion := cmtmath.MaxInt((numToDialInSameRegion+1)/2, 5)
 		reserveSizeOutOfRegion := cmtmath.MaxInt((numToDialInOtherRegion+1)/2, 5)
@@ -560,7 +560,25 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 		if successfulDials >= numToDial {
 			break
 		}
-		go func(addr *p2p.NetAddress) {
+		err := r.dialPeer(addr)
+		if err != nil {
+			switch err.(type) {
+			case errMaxAttemptsToDial, errTooEarlyToDial:
+				r.Logger.Debug(err.Error(), "addr", addr)
+			default:
+				r.Logger.Debug(err.Error(), "addr", addr)
+			}
+		} else {
+			successfulDials++
+		}
+	}
+
+	// If we still need more addresses, use reserve addresses
+	if successfulDials < numToDial {
+		for _, addr := range toDial {
+			if successfulDials >= numToDial {
+				break
+			}
 			err := r.dialPeer(addr)
 			if err != nil {
 				switch err.(type) {
@@ -572,7 +590,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 			} else {
 				successfulDials++
 			}
-		}(addr)
+		}
 	}
 
 	if r.book.NeedMoreAddrs() {
@@ -581,7 +599,6 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 	}
 
 	if r.book.NeedMoreAddrs() {
-
 		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
