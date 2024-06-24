@@ -1071,8 +1071,10 @@ func getRegionFromIP(ip string) (string, error) {
 	}
 
 	var ipInfo ipInfo
-	json.Unmarshal(body, &ipInfo)
-	// fmt.Println("ipInfoPeer", ipInfo)
+	err = json.Unmarshal(body, &ipInfo)
+	if err != nil {
+		return "", err
+	}
 
 	if ipInfo.Status != "success" {
 		return "", fmt.Errorf("failed to get country from IP %s", ip)

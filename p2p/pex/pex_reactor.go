@@ -580,6 +580,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 	}
 
 	if r.book.NeedMoreAddrs() {
+
 		// 1) Pick a random peer and ask for more.
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
