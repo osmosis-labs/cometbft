@@ -50,7 +50,7 @@ type AddrBook interface {
 
 	// Check if the address is in the book
 	HasAddress(*p2p.NetAddress) bool
-	GetAddressRegion(addr *p2p.NetAddress) string
+	GetAddressRegion(addr *p2p.NetAddress) (string, error)
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
@@ -274,15 +274,21 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 	return ka != nil
 }
 
-func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) string {
+func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
 	ka, exists := a.addrLookup[addr.ID]
 	if !exists {
-		return ""
+		region, err := p2p.GetRegionFromIP(addr.IP.String())
+		a.curRegionQueryCount++
+		if err != nil {
+			return "", err
+		}
+		a.addrLookup[ka.ID()] = ka
+		return region, nil
 	}
-	return ka.Region
+	return ka.Region, nil
 }
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.

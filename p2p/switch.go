@@ -56,7 +56,7 @@ type AddrBook interface {
 	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
-	GetAddressRegion(*NetAddress) string
+	GetAddressRegion(*NetAddress) (string, error)
 	Save()
 }
 
@@ -449,13 +449,23 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 		sw.metrics.Peers.Add(float64(-1))
 		if peer.IsOutbound() {
 			if sw.config.RegionAware {
-				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.MyRegion {
+				region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
+				if err != nil {
+					sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
+					return
+				}
+				if region != sw.MyRegion {
 					sw.CurrentNumOutboundPeersInOtherRegion--
 				}
 			}
 		} else {
 			if sw.config.RegionAware {
-				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.MyRegion {
+				region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
+				if err != nil {
+					sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
+					return
+				}
+				if region != sw.MyRegion {
 					sw.CurrentNumInboundPeersInOtherRegion--
 				}
 			}
@@ -788,7 +798,12 @@ func (sw *Switch) acceptRoutine() {
 
 		if sw.config.RegionAware {
 			// Note if the new peer is in the same region as us
-			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.MyRegion
+			region, err := sw.addrBook.GetAddressRegion(p.SocketAddr())
+			if err != nil {
+				sw.Logger.Error("error getting region of peer", "err", err)
+				continue
+			}
+			isSameRegion := region == sw.MyRegion
 
 			// Calculate the maximum allowed peers for both same region and other regions
 			maxOutboundPeersInSameRegion := int(sw.config.MaxPercentPeersInSameRegion * float64(sw.config.MaxNumOutboundPeers))
@@ -976,9 +991,14 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.RegionAware {
-		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
+		region, err := sw.addrBook.GetAddressRegion(p.SocketAddr())
+		if err != nil {
+			sw.Logger.Error("error getting region of peer", "err", err)
+			return err
+		}
+		if p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumOutboundPeersInOtherRegion++
-		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
+		} else if !p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumInboundPeersInOtherRegion++
 		}
 	}
