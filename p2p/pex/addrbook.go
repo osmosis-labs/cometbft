@@ -279,12 +279,13 @@ func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 	defer a.mtx.Unlock()
 
 	ka, exists := a.addrLookup[addr.ID]
-	if !exists {
+	if !exists || ka.Region == "" {
 		region, err := p2p.GetRegionFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
 			return "", err
 		}
+		ka.Region = region
 		a.addrLookup[addr.ID] = ka
 		return region, nil
 	}
