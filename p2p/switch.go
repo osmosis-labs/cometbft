@@ -805,6 +805,9 @@ func (sw *Switch) acceptRoutine() {
 						continue
 					}
 				} else {
+					fmt.Println("in", in)
+					fmt.Println("sw.CurrentNumInboundPeersInOtherRegion", sw.CurrentNumInboundPeersInOtherRegion)
+					fmt.Println("isSameRegion maxInboundPeersInSameRegion", maxInboundPeersInSameRegion)
 					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
@@ -817,6 +820,8 @@ func (sw *Switch) acceptRoutine() {
 						continue
 					}
 				} else {
+					fmt.Println("sw.CurrentNumInboundPeersInOtherRegion", sw.CurrentNumInboundPeersInOtherRegion)
+					fmt.Println("!isSameRegion maxInboundPeersInOtherRegion", maxInboundPeersInOtherRegion)
 					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in other regions")
 						continue
