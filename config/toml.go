@@ -340,6 +340,7 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 # The percent can be at max 0.9 (90%), as we hardcode this max to allow cross-geo connectivity.
 same_region = {{ .P2P.SameRegion }}
 max_percent_peers_in_same_region = {{ .P2P.MaxPercentPeersInSameRegion }}
+region_queries_per_peer_query_period = {{ .P2P.RegionQueriesPerPeerQueryPeriod }}
 
 #######################################################
 ###          Mempool Configuration Option          ###
