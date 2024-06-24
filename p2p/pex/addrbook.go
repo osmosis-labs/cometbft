@@ -339,10 +339,6 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 		// TEMP, only adding max of 5 from bucket
 		count := 0
 		for addrStr, ka := range bucket {
-			if count > 5 {
-				break
-			}
-			count++
 			if ka.Region == "" {
 				fmt.Println("PickAddressWithRegion Getting region from IP", ka.Addr.IP.String())
 				region, err := getRegionFromIP(ka.Addr.IP.String())
@@ -352,15 +348,18 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 				}
 				ka.Region = region
 				a.addrLookup[ka.ID()] = ka
+				count++
 			} else {
 				fmt.Println("PickAddressWithRegion Region already set", ka.Addr, "region", ka.Region)
 			}
 			if ka.Region == region {
 				fmt.Println("PickAddressWithRegion Adding address", ka.Addr, "region", ka.Region)
 				filteredBucket[addrStr] = ka
-			}
-			if ka.Region != region {
+			} else {
 				fmt.Println("PickAddressWithRegion Skipping address", ka.Addr, "region", ka.Region)
+			}
+			if count > 5 {
+				break
 			}
 		}
 
@@ -425,10 +424,6 @@ func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string
 		// TEMP, only adding max of 5 from bucket
 		count := 0
 		for addrStr, ka := range bucket {
-			if count > 5 {
-				break
-			}
-			count++
 			if ka.Region == "" {
 				fmt.Println("PickAddressNotInRegion Getting region from IP", ka.Addr.IP.String())
 				region, err := getRegionFromIP(ka.Addr.IP.String())
@@ -438,15 +433,18 @@ func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string
 				}
 				ka.Region = region
 				a.addrLookup[ka.ID()] = ka
+				count++
 			} else {
 				fmt.Println("PickAddressNotInRegion Region already set", ka.Addr, "region", ka.Region)
 			}
 			if ka.Region != region {
 				fmt.Println("PickAddressNotInRegion Adding address", ka.Addr, "region", ka.Region)
 				filteredBucket[addrStr] = ka
-			}
-			if ka.Region == region {
+			} else {
 				fmt.Println("PickAddressNotInRegion Skipping address", ka.Addr, "region", ka.Region)
+			}
+			if count > 5 {
+				break
 			}
 		}
 
