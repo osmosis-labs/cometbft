@@ -66,6 +66,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 	PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
 	PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress
+	ResetCurRegionQueryCount()
 
 	// Mark address
 	MarkGood(p2p.ID)
@@ -115,7 +116,9 @@ type addrBook struct {
 
 	wg sync.WaitGroup
 
-	isRegionTracking bool
+	isRegionTracking                bool
+	regionQueriesPerPeerQueryPeriod int
+	curRegionQueryCount             int
 }
 
 func newHashKey() []byte {
@@ -126,17 +129,18 @@ func newHashKey() []byte {
 
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict, isRegionTracking bool) AddrBook {
+func NewAddrBook(filePath string, routabilityStrict, isRegionTracking bool, regionQueriesPerPeerQueryPeriod int) AddrBook {
 	am := &addrBook{
-		rand:              cmtrand.NewRand(),
-		ourAddrs:          make(map[string]struct{}),
-		privateIDs:        make(map[p2p.ID]struct{}),
-		addrLookup:        make(map[p2p.ID]*knownAddress),
-		badPeers:          make(map[p2p.ID]*knownAddress),
-		filePath:          filePath,
-		routabilityStrict: routabilityStrict,
-		hashKey:           newHashKey(),
-		isRegionTracking:  isRegionTracking,
+		rand:                            cmtrand.NewRand(),
+		ourAddrs:                        make(map[string]struct{}),
+		privateIDs:                      make(map[p2p.ID]struct{}),
+		addrLookup:                      make(map[p2p.ID]*knownAddress),
+		badPeers:                        make(map[p2p.ID]*knownAddress),
+		filePath:                        filePath,
+		routabilityStrict:               routabilityStrict,
+		hashKey:                         newHashKey(),
+		isRegionTracking:                isRegionTracking,
+		regionQueriesPerPeerQueryPeriod: regionQueriesPerPeerQueryPeriod,
 	}
 	am.init()
 	am.BaseService = *service.NewBaseService(nil, "AddrBook", am)
@@ -337,10 +341,8 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 		if useRegion {
 			// Filter the bucket by region
 			filteredBucket := make(map[string]*knownAddress)
-			// TEMP, only adding max of 5 from bucket
-			count := 0
 			for addrStr, ka := range bucket {
-				if ka.Region == "" {
+				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
 					fmt.Println("Getting region from IP", ka.Addr.IP.String())
 					region, err := getRegionFromIP(ka.Addr.IP.String())
 					if err != nil {
@@ -349,7 +351,7 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 					}
 					ka.Region = region
 					a.addrLookup[ka.ID()] = ka
-					count++
+					a.curRegionQueryCount++
 				} else {
 					fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
@@ -358,9 +360,6 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 					filteredBucket[addrStr] = ka
 				} else {
 					fmt.Println("Skipping address", ka.Addr, "region", ka.Region)
-				}
-				if count > 5 {
-					break
 				}
 			}
 
@@ -1086,4 +1085,8 @@ func getRegionFromIP(ip string) (string, error) {
 	}
 
 	return country.Info().Region.String(), nil
+}
+
+func (a *addrBook) ResetCurRegionQueryCount() {
+	a.curRegionQueryCount = 0
 }

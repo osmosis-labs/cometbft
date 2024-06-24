@@ -40,7 +40,8 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultMaxPercentPeersInSameRegion = float64(0.9)
+	DefaultMaxPercentPeersInSameRegion     = float64(0.9)
+	DefaultRegionQueriesPerPeerQueryPeriod = 20
 
 	DefaultTendermintDir = ".cometbft"
 	defaultConfigDir     = "config"
@@ -634,37 +635,40 @@ type P2PConfig struct { //nolint: maligned
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
 
 	// Configs for connecting to peers in the same region
-	SameRegion                           bool    `mapstructure:"same_region"`
-	MyRegion                             string  `mapstructure:"my_region"`
-	MaxPercentPeersInSameRegion          float64 `mapstructure:"max_percent_peers_in_same_region"`
-	CurrentNumOutboundPeersInOtherRegion int     `mapstructure:"current_num_outbound_peers_in_other_region"`
-	CurrentNumInboundPeersInOtherRegion  int     `mapstructure:"current_num_inbound_peers_in_other_region"`
+	SameRegion                      bool    `mapstructure:"same_region"`
+	MaxPercentPeersInSameRegion     float64 `mapstructure:"max_percent_peers_in_same_region"`
+	RegionQueriesPerPeerQueryPeriod int     `mapstructure:"region_queries_per_peer_query_period"`
+
+	MyRegion                             string `mapstructure:"my_region"`
+	CurrentNumOutboundPeersInOtherRegion int    `mapstructure:"current_num_outbound_peers_in_other_region"`
+	CurrentNumInboundPeersInOtherRegion  int    `mapstructure:"current_num_inbound_peers_in_other_region"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
-		MaxPacketMsgPayloadSize:      1024,    // 1 kB
-		SendRate:                     5120000, // 5 mB/s
-		RecvRate:                     5120000, // 5 mB/s
-		PexReactor:                   true,
-		SeedMode:                     false,
-		AllowDuplicateIP:             false,
-		HandshakeTimeout:             20 * time.Second,
-		DialTimeout:                  3 * time.Second,
-		TestDialFail:                 false,
-		TestFuzz:                     false,
-		TestFuzzConfig:               DefaultFuzzConnConfig(),
-		SameRegion:                   false,
-		MaxPercentPeersInSameRegion:  DefaultMaxPercentPeersInSameRegion,
+		ListenAddress:                   "tcp://0.0.0.0:26656",
+		ExternalAddress:                 "",
+		AddrBook:                        defaultAddrBookPath,
+		AddrBookStrict:                  true,
+		MaxNumInboundPeers:              40,
+		MaxNumOutboundPeers:             10,
+		PersistentPeersMaxDialPeriod:    0 * time.Second,
+		FlushThrottleTimeout:            100 * time.Millisecond,
+		MaxPacketMsgPayloadSize:         1024,    // 1 kB
+		SendRate:                        5120000, // 5 mB/s
+		RecvRate:                        5120000, // 5 mB/s
+		PexReactor:                      true,
+		SeedMode:                        false,
+		AllowDuplicateIP:                false,
+		HandshakeTimeout:                20 * time.Second,
+		DialTimeout:                     3 * time.Second,
+		TestDialFail:                    false,
+		TestFuzz:                        false,
+		TestFuzzConfig:                  DefaultFuzzConnConfig(),
+		SameRegion:                      false,
+		MaxPercentPeersInSameRegion:     DefaultMaxPercentPeersInSameRegion,
+		RegionQueriesPerPeerQueryPeriod: DefaultRegionQueriesPerPeerQueryPeriod,
 	}
 }
 

@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	addrB := pex.NewAddrBook("./testdata/addrbook1", false, false)
+	addrB := pex.NewAddrBook("./testdata/addrbook1", false, false, 20)
 	pexR := pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
 	if pexR == nil {
 		panic("NewReactor returned nil")

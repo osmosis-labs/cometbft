@@ -25,7 +25,7 @@ func TestAddrBookPickAddress(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 
@@ -62,11 +62,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	book.Save()
 
-	book = NewAddrBook(fname, true, false)
+	book = NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	err := book.Start()
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	assert.Equal(t, 100, book.Size())
 	book.Save()
 
-	book = NewAddrBook(fname, true, false)
+	book = NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	err = book.Start()
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
@@ -117,7 +117,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		err := book.AddAddress(addrSrc.addr, addrSrc.src)
@@ -159,7 +159,7 @@ func TestAddrBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	randAddrs := randNetAddressPairs(t, 100)
@@ -213,7 +213,7 @@ func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	addr := randIPv4Address(t)
@@ -261,7 +261,7 @@ func TestAddrBookGetSelection(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	// 1) empty book
@@ -303,7 +303,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	// 1) empty book
@@ -386,7 +386,7 @@ func TestAddrBookHasAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	addr := randIPv4Address(t)
 	err := book.AddAddress(addr, addr)
@@ -416,7 +416,7 @@ func TestBanBadPeers(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	addr := randIPv4Address(t)
@@ -443,7 +443,7 @@ func TestAddrBookEmpty(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	// Check that empty book is empty
 	require.True(t, book.Empty())
@@ -465,7 +465,7 @@ func TestPrivatePeers(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 
 	addrs, private := testCreatePrivateAddrs(t, 10)
@@ -614,7 +614,7 @@ func TestAddrBookAddDoesNotOverwriteOldIP(t *testing.T) {
 	src, err := p2p.NewNetAddressString(SrcAddr)
 	require.Nil(t, err)
 
-	book := NewAddrBook(fname, true, false)
+	book := NewAddrBook(fname, true, false, 20)
 	book.SetLogger(log.TestingLogger())
 	err = book.AddAddress(peerRealAddr, src)
 	require.Nil(t, err)
@@ -739,7 +739,7 @@ func deleteTempFile(fname string) {
 func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *addrBook, fname string) {
 	fname = createTempFileName("addrbook_test")
 
-	book = NewAddrBook(fname, true, false).(*addrBook)
+	book = NewAddrBook(fname, true, false, 20).(*addrBook)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 

@@ -9,7 +9,7 @@ import (
 	"github.com/cometbft/cometbft/p2p/pex"
 )
 
-var addrBook = pex.NewAddrBook("./testdata/addrbook.json", true, false)
+var addrBook = pex.NewAddrBook("./testdata/addrbook.json", true, false, 20)
 
 func Fuzz(data []byte) int {
 	addr := new(p2p.NetAddress)

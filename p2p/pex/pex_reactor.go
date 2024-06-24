@@ -485,6 +485,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 	maxAttempts := numToDial * 3
 
 	if regionAware {
+		r.book.ResetCurRegionQueryCount()
 		toDialInRegion := make(map[p2p.ID]*p2p.NetAddress)
 		toDialOutOfRegion := make(map[p2p.ID]*p2p.NetAddress)
 

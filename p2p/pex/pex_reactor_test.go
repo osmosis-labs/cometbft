@@ -82,7 +82,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false, false)
+			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false, false, 20)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
 
@@ -416,7 +416,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false, false)
+			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false, false, 20)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
 
@@ -585,7 +585,7 @@ func testCreatePeerWithConfig(dir string, id int, config *ReactorConfig) *p2p.Sw
 		"127.0.0.1",
 		"123.123.123",
 		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", id)), false, false)
+			book := NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", id)), false, false, 20)
 			book.SetLogger(log.TestingLogger())
 			sw.SetAddrBook(book)
 
@@ -617,7 +617,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 		"127.0.0.1",
 		"123.123.123",
 		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, "addrbookSeed.json"), false, false)
+			book := NewAddrBook(filepath.Join(dir, "addrbookSeed.json"), false, false, 20)
 			book.SetLogger(log.TestingLogger())
 			for j := 0; j < len(knownAddrs); j++ {
 				book.AddAddress(knownAddrs[j], srcAddrs[j]) //nolint:errcheck // ignore for tests
@@ -651,7 +651,7 @@ func createReactor(conf *ReactorConfig) (r *Reactor, book AddrBook) {
 	if err != nil {
 		panic(err)
 	}
-	book = NewAddrBook(filepath.Join(dir, "addrbook.json"), true, false)
+	book = NewAddrBook(filepath.Join(dir, "addrbook.json"), true, false, 40)
 	book.SetLogger(log.TestingLogger())
 
 	r = NewReactor(book, conf)
