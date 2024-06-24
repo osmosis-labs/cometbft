@@ -801,6 +801,7 @@ func (sw *Switch) acceptRoutine() {
 			region, err := sw.addrBook.GetAddressRegion(p.SocketAddr())
 			if err != nil {
 				sw.Logger.Error("error getting region of peer", "err", err)
+				sw.transport.Cleanup(p)
 				continue
 			}
 			isSameRegion := region == sw.MyRegion
@@ -817,6 +818,7 @@ func (sw *Switch) acceptRoutine() {
 				if p.IsOutbound() {
 					if (out-sw.CurrentNumOutboundPeersInOtherRegion)+1 > maxOutboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
+						sw.transport.Cleanup(p)
 						continue
 					}
 				} else {
@@ -825,6 +827,7 @@ func (sw *Switch) acceptRoutine() {
 					fmt.Println("isSameRegion maxInboundPeersInSameRegion", maxInboundPeersInSameRegion)
 					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
+						sw.transport.Cleanup(p)
 						continue
 					}
 				}
@@ -832,6 +835,7 @@ func (sw *Switch) acceptRoutine() {
 				if p.IsOutbound() {
 					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in other regions")
+						sw.transport.Cleanup(p)
 						continue
 					}
 				} else {
@@ -839,6 +843,7 @@ func (sw *Switch) acceptRoutine() {
 					fmt.Println("!isSameRegion maxInboundPeersInOtherRegion", maxInboundPeersInOtherRegion)
 					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in other regions")
+						sw.transport.Cleanup(p)
 						continue
 					}
 				}
