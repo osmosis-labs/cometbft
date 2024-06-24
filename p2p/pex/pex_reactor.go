@@ -431,22 +431,14 @@ func (r *Reactor) ensurePeersRoutine() {
 	// fire once immediately.
 	// ensures we dial the seeds right away if the book is empty
 	swConfig := r.Switch.GetConfig()
-	if swConfig.SameRegion {
-		r.ensurePeersRegion()
-	} else {
-		r.ensurePeers()
-	}
+	r.ensurePeers(swConfig.SameRegion)
 
 	// fire periodically
 	ticker := time.NewTicker(r.ensurePeersPeriod)
 	for {
 		select {
 		case <-ticker.C:
-			if swConfig.SameRegion {
-				r.ensurePeersRegion()
-			} else {
-				r.ensurePeers()
-			}
+			r.ensurePeers(swConfig.SameRegion)
 		case <-r.Quit():
 			ticker.Stop()
 			return
@@ -459,7 +451,7 @@ func (r *Reactor) ensurePeersRoutine() {
 // heuristic that we haven't perfected yet, or, perhaps is manually edited by
 // the node operator. It should not be used to compute what addresses are
 // already connected or not.
-func (r *Reactor) ensurePeersCommon(regionAware bool) {
+func (r *Reactor) ensurePeers(regionAware bool) {
 	var (
 		out, in, dial = r.Switch.NumPeers()
 		numToDial     = r.Switch.MaxNumOutboundPeers() - (out + dial)
@@ -632,14 +624,6 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 			r.dialSeeds()
 		}
 	}
-}
-
-func (r *Reactor) ensurePeersRegion() {
-	r.ensurePeersCommon(true)
-}
-
-func (r *Reactor) ensurePeers() {
-	r.ensurePeersCommon(false)
 }
 
 func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDialed time.Time) {

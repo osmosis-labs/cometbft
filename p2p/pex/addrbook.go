@@ -112,7 +112,7 @@ type addrBook struct {
 
 	wg sync.WaitGroup
 
-	// Region trackers
+	// Region query trackers
 	isRegionTracking                bool
 	regionQueriesPerPeerQueryPeriod int
 	curRegionQueryCount             int
