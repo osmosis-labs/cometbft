@@ -97,6 +97,11 @@ type Switch struct {
 
 	metrics *Metrics
 	mlc     *metricsLabelCache
+
+	// Trackers used for peering in same region
+	MyRegion                             string
+	CurrentNumOutboundPeersInOtherRegion int
+	CurrentNumInboundPeersInOtherRegion  int
 }
 
 // NetAddress returns the address the switch is listening on.
@@ -147,7 +152,7 @@ func NewSwitch(
 		if err != nil {
 			panic(fmt.Sprintf("failed to get own region: %v", err))
 		}
-		cfg.MyRegion = myRegion
+		sw.MyRegion = myRegion
 
 		// Make sure that the MaxPercentPeersInSameRegion does not exceed some hard coded value.
 		// If it does, replace it with the max
@@ -424,14 +429,14 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 		sw.metrics.Peers.Add(float64(-1))
 		if peer.IsOutbound() {
 			if sw.config.SameRegion {
-				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.config.MyRegion {
-					sw.config.CurrentNumOutboundPeersInOtherRegion--
+				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.MyRegion {
+					sw.CurrentNumOutboundPeersInOtherRegion--
 				}
 			}
 		} else {
 			if sw.config.SameRegion {
-				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.config.MyRegion {
-					sw.config.CurrentNumInboundPeersInOtherRegion--
+				if sw.addrBook.GetAddressRegion(peer.SocketAddr()) != sw.MyRegion {
+					sw.CurrentNumInboundPeersInOtherRegion--
 				}
 			}
 		}
@@ -764,8 +769,8 @@ func (sw *Switch) acceptRoutine() {
 
 		if sw.config.SameRegion {
 			// Note if the new peer is in the same region as us
-			fmt.Println("Checking if peer is same region. My region: ", sw.config.MyRegion, " Peer region: ", sw.addrBook.GetAddressRegion(p.SocketAddr()))
-			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.config.MyRegion
+			fmt.Println("Checking if peer is same region. My region: ", sw.MyRegion, " Peer region: ", sw.addrBook.GetAddressRegion(p.SocketAddr()))
+			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.MyRegion
 
 			if !isSameRegion {
 				// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
@@ -773,14 +778,14 @@ func (sw *Switch) acceptRoutine() {
 				if p.IsOutbound() {
 					fmt.Println("peer is outbound acceptRoutine")
 					maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
-					if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
+					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
 					}
 				} else {
 					fmt.Println("peer is inbound acceptRoutine")
 					maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))
-					if sw.config.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
+					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
 					}
@@ -939,12 +944,12 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.SameRegion {
-		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
+		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
 			fmt.Println("adding peer outbound not in region: ", p.SocketAddr().IP.String())
-			sw.config.CurrentNumOutboundPeersInOtherRegion++
-		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.config.MyRegion {
+			sw.CurrentNumOutboundPeersInOtherRegion++
+		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
 			fmt.Println("adding peer inbound not in region: ", p.SocketAddr().IP.String())
-			sw.config.CurrentNumInboundPeersInOtherRegion++
+			sw.CurrentNumInboundPeersInOtherRegion++
 		}
 	}
 

@@ -489,7 +489,8 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 		toDialOutOfRegion := make(map[p2p.ID]*p2p.NetAddress)
 
 		swConfig := r.Switch.GetConfig()
-		currentOutboundInOtherRegion := swConfig.CurrentNumOutboundPeersInOtherRegion
+
+		currentOutboundInOtherRegion := r.Switch.CurrentNumOutboundPeersInOtherRegion
 		maxOutboundPeersInOtherRegion := swConfig.MaxNumOutboundPeers - int(swConfig.MaxPercentPeersInSameRegion*float64(swConfig.MaxNumOutboundPeers))
 
 		numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
@@ -507,7 +508,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		// First iteration: Dial peers in the same region
 		for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion+reserveSizeInRegion; i++ {
-			try := r.book.PickAddressWithRegion(newBias, swConfig.MyRegion)
+			try := r.book.PickAddressWithRegion(newBias, r.Switch.MyRegion)
 			if try == nil {
 				continue
 			}
@@ -522,7 +523,7 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		// Second iteration: Dial peers in other regions
 		for i := 0; i < maxAttempts && len(toDialOutOfRegion) < numToDialInOtherRegion+reserveSizeOutOfRegion; i++ {
-			try := r.book.PickAddressNotInRegion(newBias, swConfig.MyRegion)
+			try := r.book.PickAddressNotInRegion(newBias, r.Switch.MyRegion)
 			if try == nil {
 				continue
 			}

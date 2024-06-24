@@ -638,10 +638,6 @@ type P2PConfig struct { //nolint: maligned
 	SameRegion                      bool    `mapstructure:"same_region"`
 	MaxPercentPeersInSameRegion     float64 `mapstructure:"max_percent_peers_in_same_region"`
 	RegionQueriesPerPeerQueryPeriod int     `mapstructure:"region_queries_per_peer_query_period"`
-
-	MyRegion                             string `mapstructure:"my_region"`
-	CurrentNumOutboundPeersInOtherRegion int    `mapstructure:"current_num_outbound_peers_in_other_region"`
-	CurrentNumInboundPeersInOtherRegion  int    `mapstructure:"current_num_inbound_peers_in_other_region"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
