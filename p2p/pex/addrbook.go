@@ -7,17 +7,13 @@ package pex
 import (
 	crand "crypto/rand"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
 	"net"
-	"net/http"
 	"sync"
 	"time"
 
-	"github.com/biter777/countries"
 	"github.com/minio/highwayhash"
 
 	"github.com/cometbft/cometbft/crypto"
@@ -230,7 +226,8 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	defer a.mtx.Unlock()
 
 	if a.isRegionTracking {
-		region, err := a.getRegionFromIP(addr.IP.String())
+		region, err := p2p.GetRegionFromIP(addr.IP.String())
+		a.curRegionQueryCount++
 		if err != nil {
 			a.Logger.Error("Failed to get region from IP", "err", err)
 			return err
@@ -355,7 +352,8 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 				// If the region is not set, we will attempt to get it from the IP address
 				// if we have not exceeded the region query limit for the current period.
 				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
-					region, err := a.getRegionFromIP(ka.Addr.IP.String())
+					region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
+					a.curRegionQueryCount++
 					if err != nil {
 						a.Logger.Error("Failed to get region from IP", "err", err)
 						return nil
@@ -1069,54 +1067,6 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 	}
 	hasher.Write(b)
 	return hasher.Sum(nil), nil
-}
-
-type ipInfo struct {
-	Status      string
-	CountryCode string
-}
-
-// getRegionFromIP retrieves the region associated with a given IP address.
-// It sends an HTTP request to the ip-api service to get the country code for the IP address,
-// then maps the country code to a region using the countries package.
-// The function increments the current region query count and returns an error if the request fails
-// or if the country code cannot be mapped to a region.
-//
-// Parameters:
-// - ip: The IP address to look up.
-//
-// Returns:
-// - A string representing the region associated with the IP address.
-// - An error if the region cannot be determined.
-func (a *addrBook) getRegionFromIP(ip string) (string, error) {
-	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,countryCode", ip))
-	a.curRegionQueryCount++
-	if err != nil {
-		return "", err
-	}
-	defer req.Body.Close()
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var ipInfo ipInfo
-	err = json.Unmarshal(body, &ipInfo)
-	if err != nil {
-		return "", err
-	}
-
-	if ipInfo.Status != "success" {
-		return "", fmt.Errorf("failed to get country from IP %s", ip)
-	}
-
-	country := countries.ByName(ipInfo.CountryCode)
-	if country == countries.Unknown {
-		return "", fmt.Errorf("could not find country: %s", ipInfo.CountryCode)
-	}
-
-	return country.Info().Region.String(), nil
 }
 
 func (a *addrBook) ResetCurRegionQueryCount() {

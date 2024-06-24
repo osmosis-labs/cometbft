@@ -148,7 +148,7 @@ func NewSwitch(
 
 	if cfg.SameRegion {
 		// If SameRegion is set, we need to populate our region with the region of the node
-		myRegion, err := getOwnRegion()
+		myRegion, err := GetRegionFromIP("")
 		if err != nil {
 			panic(fmt.Sprintf("failed to get own region: %v", err))
 		}
@@ -166,13 +166,20 @@ func NewSwitch(
 
 type ipInfo struct {
 	Status      string
-	Country     string
 	CountryCode string
 }
 
-func getOwnRegion() (string, error) {
-	// TODO: Add fallbacks
-	req, err := http.Get("http://ip-api.com/json/")
+// getRegion retrieves the region associated with a given IP address.
+// If the IP address is an empty string, it retrieves the region for the current machine's IP address.
+func GetRegionFromIP(ip string) (string, error) {
+	var url string
+	if ip == "" {
+		url = "http://ip-api.com/json/"
+	} else {
+		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,countryCode", ip)
+	}
+
+	req, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
@@ -188,10 +195,9 @@ func getOwnRegion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("ipInfoOwn", ipInfo)
 
 	if ipInfo.Status != "success" {
-		return "", fmt.Errorf("failed to get own region")
+		return "", fmt.Errorf("failed to get country from IP %s", ip)
 	}
 
 	country := countries.ByName(ipInfo.CountryCode)
