@@ -353,7 +353,7 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 					a.addrLookup[ka.ID()] = ka
 					a.curRegionQueryCount++
 				} else {
-					fmt.Println("Region already set", ka.Addr, "region", ka.Region)
+					//fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
 				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
 					// fmt.Println("Adding address", ka.Addr, "region", ka.Region)
@@ -368,6 +368,9 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 				randIndex := a.rand.Intn(len(filteredBucket))
 				for _, ka := range filteredBucket {
 					if randIndex == 0 {
+						if !matchRegion {
+							fmt.Println("THIS IP USED FOR NON SAME REGION", ka.Addr.IP.String(), "REGION", ka.Region)
+						}
 						return ka.Addr
 					}
 					randIndex--
@@ -378,9 +381,6 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 			randIndex := a.rand.Intn(len(bucket))
 			for _, ka := range bucket {
 				if randIndex == 0 {
-					if !matchRegion {
-						fmt.Println("THIS IP USED FOR NON SAME REGION", ka.Addr.IP.String(), "REGION", ka.Region)
-					}
 					return ka.Addr
 				}
 				randIndex--
