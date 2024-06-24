@@ -488,7 +488,6 @@ func (r *Reactor) ensurePeers(regionAware bool) {
 
 		numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 		numToDialInSameRegion := numToDial - numToDialInOtherRegion
-		fmt.Println("numToDialInSameRegion", numToDialInSameRegion, "numToDialInOtherRegion", numToDialInOtherRegion)
 
 		reserveSizeInRegion := cmtmath.MaxInt((numToDialInSameRegion+1)/2, 5)
 		reserveSizeOutOfRegion := cmtmath.MaxInt((numToDialInOtherRegion+1)/2, 5)

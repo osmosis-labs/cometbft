@@ -774,21 +774,18 @@ func (sw *Switch) acceptRoutine() {
 
 		if sw.config.RegionAware {
 			// Note if the new peer is in the same region as us
-			fmt.Println("Checking if peer is same region. My region: ", sw.MyRegion, " Peer region: ", sw.addrBook.GetAddressRegion(p.SocketAddr()))
 			isSameRegion := sw.addrBook.GetAddressRegion(p.SocketAddr()) == sw.MyRegion
 
 			if !isSameRegion {
 				// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
 				// TODO check this formula
 				if p.IsOutbound() {
-					fmt.Println("peer is outbound acceptRoutine")
 					maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
 					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						continue
 					}
 				} else {
-					fmt.Println("peer is inbound acceptRoutine")
 					maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumInboundPeers))
 					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
@@ -901,7 +898,6 @@ func (sw *Switch) filterPeer(p Peer) error {
 // addPeer starts up the Peer and adds it to the Switch. Error is returned if
 // the peer is filtered out or failed to start or can't be added.
 func (sw *Switch) addPeer(p Peer) error {
-	fmt.Println("calling addPeer", p.ID())
 	if err := sw.filterPeer(p); err != nil {
 		return err
 	}
@@ -934,25 +930,20 @@ func (sw *Switch) addPeer(p Peer) error {
 	// Add the peer to PeerSet. Do this before starting the reactors
 	// so that if Receive errors, we will find the peer and remove it.
 	// Add should not err since we already checked peers.Has().
-	fmt.Println("adding peer", p.ID())
 	if err := sw.peers.Add(p); err != nil {
 		switch err.(type) {
 		case ErrPeerRemoval:
-			fmt.Println("Error starting peer, Peer has already errored and removal was attempted.")
 			sw.Logger.Error("Error starting peer ",
 				" err ", "Peer has already errored and removal was attempted.",
 				"peer", p.ID())
 		}
-		fmt.Println("adding peer error", err)
 		return err
 	}
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.RegionAware {
 		if p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
-			fmt.Println("adding peer outbound not in region: ", p.SocketAddr().IP.String())
 			sw.CurrentNumOutboundPeersInOtherRegion++
 		} else if !p.IsOutbound() && sw.addrBook.GetAddressRegion(p.SocketAddr()) != sw.MyRegion {
-			fmt.Println("adding peer inbound not in region: ", p.SocketAddr().IP.String())
 			sw.CurrentNumInboundPeersInOtherRegion++
 		}
 	}
@@ -962,7 +953,6 @@ func (sw *Switch) addPeer(p Peer) error {
 		reactor.AddPeer(p)
 	}
 
-	fmt.Println("added peer", p.ID())
 	sw.Logger.Debug("Added peer", "peer", p)
 
 	return nil
