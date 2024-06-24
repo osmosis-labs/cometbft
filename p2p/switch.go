@@ -803,13 +803,13 @@ func (sw *Switch) acceptRoutine() {
 
 				if p.IsOutbound() {
 					if (out-sw.CurrentNumOutboundPeersInOtherRegion)+1 > maxOutboundPeersInSameRegion {
-						sw.Logger.Error("exceeds max percent peers in same region")
+						sw.Logger.Debug("exceeds max percent peers in same region")
 						sw.transport.Cleanup(p)
 						continue
 					}
 				} else {
 					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
-						sw.Logger.Error("exceeds max percent peers in same region")
+						sw.Logger.Debug("exceeds max percent peers in same region")
 						sw.transport.Cleanup(p)
 						continue
 					}
@@ -817,13 +817,13 @@ func (sw *Switch) acceptRoutine() {
 			} else {
 				if p.IsOutbound() {
 					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
-						sw.Logger.Error("exceeds max percent peers in other regions")
+						sw.Logger.Debug("exceeds max percent peers in other regions")
 						sw.transport.Cleanup(p)
 						continue
 					}
 				} else {
 					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
-						sw.Logger.Error("exceeds max percent peers in other regions")
+						sw.Logger.Debug("exceeds max percent peers in other regions")
 						sw.transport.Cleanup(p)
 						continue
 					}
