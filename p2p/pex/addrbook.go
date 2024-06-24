@@ -343,7 +343,7 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 			filteredBucket := make(map[string]*knownAddress)
 			for addrStr, ka := range bucket {
 				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
-					fmt.Println("Getting region from IP", ka.Addr.IP.String())
+					// fmt.Println("Getting region from IP", ka.Addr.IP.String())
 					region, err := getRegionFromIP(ka.Addr.IP.String())
 					if err != nil {
 						a.Logger.Error("Failed to get region from IP", "err", err)
@@ -356,10 +356,10 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 					fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
 				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
-					fmt.Println("Adding address", ka.Addr, "region", ka.Region)
+					// fmt.Println("Adding address", ka.Addr, "region", ka.Region)
 					filteredBucket[addrStr] = ka
 				} else {
-					fmt.Println("Skipping address", ka.Addr, "region", ka.Region)
+					// fmt.Println("Skipping address", ka.Addr, "region", ka.Region)
 				}
 			}
 
@@ -378,6 +378,9 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 			randIndex := a.rand.Intn(len(bucket))
 			for _, ka := range bucket {
 				if randIndex == 0 {
+					if !matchRegion {
+						fmt.Println("THIS IP USED FOR NON SAME REGION", ka.Addr.IP.String(), "REGION", ka.Region)
+					}
 					return ka.Addr
 				}
 				randIndex--
