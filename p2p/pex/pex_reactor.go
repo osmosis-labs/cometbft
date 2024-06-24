@@ -190,9 +190,6 @@ func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *Reactor) AddPeer(p Peer) {
-	// TODO REMOVE
-	r.Switch.InboundPeers()
-
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books -
 		// either via DialPeersAsync or r.Receive.
@@ -491,9 +488,6 @@ func (r *Reactor) ensurePeers(regionAware bool) {
 
 		numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 		numToDialInSameRegion := numToDial - numToDialInOtherRegion
-
-		fmt.Println("numToDialInOtherRegion", numToDialInOtherRegion)
-		fmt.Println("numToDialInSameRegion", numToDialInSameRegion)
 
 		reserveSizeInRegion := cmtmath.MaxInt((numToDialInSameRegion+1)/2, 5)
 		reserveSizeOutOfRegion := cmtmath.MaxInt((numToDialInOtherRegion+1)/2, 5)

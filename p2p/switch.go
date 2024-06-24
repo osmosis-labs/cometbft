@@ -367,20 +367,6 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-// TODO DELETE
-func (sw *Switch) InboundPeers() {
-	peers := sw.peers.List()
-	count := 0
-	for _, peer := range peers {
-		if !peer.IsOutbound() {
-			fmt.Println("inbound peer IP: ", peer.RemoteIP().String())
-			count++
-		}
-	}
-	fmt.Println("count of inbound peers: ", count)
-	fmt.Println()
-}
-
 func (sw *Switch) IsPeerUnconditional(id ID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
@@ -822,9 +808,6 @@ func (sw *Switch) acceptRoutine() {
 						continue
 					}
 				} else {
-					fmt.Println("in", in)
-					fmt.Println("sw.CurrentNumInboundPeersInOtherRegion", sw.CurrentNumInboundPeersInOtherRegion)
-					fmt.Println("isSameRegion maxInboundPeersInSameRegion", maxInboundPeersInSameRegion)
 					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
 						sw.Logger.Error("exceeds max percent peers in same region")
 						sw.transport.Cleanup(p)
@@ -839,8 +822,6 @@ func (sw *Switch) acceptRoutine() {
 						continue
 					}
 				} else {
-					fmt.Println("sw.CurrentNumInboundPeersInOtherRegion", sw.CurrentNumInboundPeersInOtherRegion)
-					fmt.Println("!isSameRegion maxInboundPeersInOtherRegion", maxInboundPeersInOtherRegion)
 					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 						sw.Logger.Error("exceeds max percent peers in other regions")
 						sw.transport.Cleanup(p)

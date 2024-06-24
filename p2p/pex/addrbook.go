@@ -288,10 +288,8 @@ func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 		ka = newKnownAddress(addr, nil)
 		ka.Region = region
 		a.addrLookup[addr.ID] = ka
-		fmt.Println("Region: ", region)
 		return region, nil
 	}
-	fmt.Println("Region: ", ka.Region)
 	return ka.Region, nil
 }
 
