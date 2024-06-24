@@ -367,6 +367,20 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
+// TODO DELETE
+func (sw *Switch) InboundPeers() {
+	peers := sw.peers.List()
+	count := 0
+	for _, peer := range peers {
+		if !peer.IsOutbound() {
+			fmt.Println("inbound peer IP: ", peer.RemoteIP().String())
+			count++
+		}
+	}
+	fmt.Println("count of inbound peers: ", count)
+	fmt.Println()
+}
+
 func (sw *Switch) IsPeerUnconditional(id ID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
