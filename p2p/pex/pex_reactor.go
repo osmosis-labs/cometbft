@@ -494,11 +494,17 @@ func (r *Reactor) ensurePeersRegion() {
 	numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 	numToDialInSameRegion := numToDial - numToDialInOtherRegion
 
+	// Calculate reserve size (50% of numToDial, rounded up)
+	reserveSizeInRegion := (numToDialInSameRegion + 1) / 2
+	reserveSizeOutOfRegion := (numToDialInOtherRegion + 1) / 2
+
 	fmt.Println("numToDialInSameRegion", numToDialInSameRegion)
 	fmt.Println("numToDialInOtherRegion", numToDialInOtherRegion)
+	fmt.Println("reserveSizeInRegion", reserveSizeInRegion)
+	fmt.Println("reserveSizeOutOfRegion", reserveSizeOutOfRegion)
 
 	// First iteration: Dial peers in the same region
-	for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion; i++ {
+	for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion+reserveSizeInRegion; i++ {
 		try := r.book.PickAddressWithRegion(newBias, swConfig.MyRegion)
 		if try == nil {
 			continue
@@ -513,7 +519,7 @@ func (r *Reactor) ensurePeersRegion() {
 	}
 
 	// Second iteration: Dial peers in other regions
-	for i := 0; i < maxAttempts && len(toDialOutOfRegion) < numToDialInOtherRegion; i++ {
+	for i := 0; i < maxAttempts && len(toDialOutOfRegion) < numToDialInOtherRegion+reserveSizeOutOfRegion; i++ {
 		try := r.book.PickAddressNotInRegion(newBias, swConfig.MyRegion)
 		if try == nil {
 			continue
@@ -538,7 +544,11 @@ func (r *Reactor) ensurePeersRegion() {
 	fmt.Println("toDial", toDial)
 
 	// Dial picked addresses
+	successfulDials := 0
 	for _, addr := range toDial {
+		if successfulDials >= numToDial {
+			break
+		}
 		go func(addr *p2p.NetAddress) {
 			err := r.dialPeer(addr)
 			fmt.Println("err in ensurePeersRegion", err)
@@ -549,6 +559,8 @@ func (r *Reactor) ensurePeersRegion() {
 				default:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				}
+			} else {
+				successfulDials++
 			}
 		}(addr)
 	}
