@@ -529,12 +529,41 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 			toDialOutOfRegion[try.ID] = try
 		}
 
-		// Combine the two maps
-		for id, addr := range toDialInRegion {
-			toDial[id] = addr
+		// Dial in-region addresses
+		successfulDials := 0
+		for _, addr := range toDialInRegion {
+			if successfulDials >= numToDialInSameRegion {
+				break
+			}
+			err := r.dialPeer(addr)
+			if err != nil {
+				switch err.(type) {
+				case errMaxAttemptsToDial, errTooEarlyToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				default:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				}
+			} else {
+				successfulDials++
+			}
 		}
-		for id, addr := range toDialOutOfRegion {
-			toDial[id] = addr
+
+		// Dial out-of-region addresses
+		for _, addr := range toDialOutOfRegion {
+			if successfulDials >= numToDial {
+				break
+			}
+			err := r.dialPeer(addr)
+			if err != nil {
+				switch err.(type) {
+				case errMaxAttemptsToDial, errTooEarlyToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				default:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				}
+			} else {
+				successfulDials++
+			}
 		}
 	} else {
 		reserveSize := cmtmath.MaxInt((numToDial+1)/2, 5)
@@ -552,29 +581,9 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 			}
 			toDial[try.ID] = try
 		}
-	}
 
-	// Dial picked addresses
-	successfulDials := 0
-	for _, addr := range toDial {
-		if successfulDials >= numToDial {
-			break
-		}
-		err := r.dialPeer(addr)
-		if err != nil {
-			switch err.(type) {
-			case errMaxAttemptsToDial, errTooEarlyToDial:
-				r.Logger.Debug(err.Error(), "addr", addr)
-			default:
-				r.Logger.Debug(err.Error(), "addr", addr)
-			}
-		} else {
-			successfulDials++
-		}
-	}
-
-	// If we still need more addresses, use reserve addresses
-	if successfulDials < numToDial {
+		// Dial picked addresses
+		successfulDials := 0
 		for _, addr := range toDial {
 			if successfulDials >= numToDial {
 				break
