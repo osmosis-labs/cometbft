@@ -81,6 +81,7 @@ linters-settings:
           - github.com/ChainSafe/go-schnorrkel
           - github.com/creachadair/taskgroup
           - github.com/gtank/merlin
+          - github.com/biter777/countries
       test:
         files:
           - "$test"

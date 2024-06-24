@@ -159,6 +159,12 @@ func NewSwitch(
 	return sw
 }
 
+type ipInfo struct {
+	Status      string
+	Country     string
+	CountryCode string
+}
+
 func getOwnRegion() (string, error) {
 	// TODO: Add fallbacks
 	req, err := http.Get("http://ip-api.com/json/")
@@ -173,16 +179,19 @@ func getOwnRegion() (string, error) {
 	}
 
 	var ipInfo ipInfo
-	json.Unmarshal(body, &ipInfo)
+	err = json.Unmarshal(body, &ipInfo)
+	if err != nil {
+		return "", err
+	}
 	fmt.Println("ipInfoOwn", ipInfo)
 
 	if ipInfo.Status != "success" {
 		return "", fmt.Errorf("failed to get own region")
 	}
 
-	country := countries.ByName(ipInfo.Country)
+	country := countries.ByName(ipInfo.CountryCode)
 	if country == countries.Unknown {
-		return "", fmt.Errorf("could not find country: %s", ipInfo.Country)
+		return "", fmt.Errorf("could not find country: %s", ipInfo.CountryCode)
 	}
 
 	return country.Info().Region.String(), nil
@@ -810,29 +819,6 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	// // Check if adding this peer would exceed the percentage of in/outbound peers in the same region
-	// if sw.config.SameRegion {
-	// 	// Note if the new peer is in the same region as us
-	// 	peerRegion, err := getRegionFromIP(addr.IP.String())
-	// 	if err != nil {
-	// 		sw.Logger.Error("Failed to get region from IP", "err", err)
-	// 		return err
-	// 	}
-	// 	fmt.Println("peerRegion", peerRegion)
-	// 	isSameRegion := peerRegion == sw.config.MyRegion
-
-	// 	if !isSameRegion {
-	// 		// If this peer is not in our same region and we have no room to dial peers outside of our region, return error
-	// 		// TODO check this formula
-	// 		fmt.Println("peer is outbound from addOutboundPeerWithConfig")
-	// 		maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - int(sw.config.MaxPercentPeersInSameRegion*float64(sw.config.MaxNumOutboundPeers))
-	// 		if sw.config.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
-	// 			return ErrRejected{id: ID(addr.ID), err: fmt.Errorf("exceeds max percent peers in same region")}
-	// 			// return ErrRejected{id: p.ID(), err: fmt.Errorf("exceeds max percent peers in same region")}
-	// 		}
-	// 	}
-	// }
-
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:       sw.chDescs,
 		onPeerError:   sw.StopPeerForError,
@@ -873,39 +859,6 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	return nil
-}
-
-type ipInfo struct {
-	Status  string
-	Country string
-}
-
-func getRegionFromIP(ip string) (string, error) {
-	req, err := http.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country", ip))
-	if err != nil {
-		return "", err
-	}
-	defer req.Body.Close()
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var ipInfo ipInfo
-	json.Unmarshal(body, &ipInfo)
-	fmt.Println("ipInfoPeer", ipInfo)
-
-	if ipInfo.Status != "success" {
-		return "", fmt.Errorf("failed to get country from IP %s", ip)
-	}
-
-	country := countries.ByName(ipInfo.Country)
-	if country == countries.Unknown {
-		return "", fmt.Errorf("could not find country: %s", ipInfo.Country)
-	}
-
-	return country.Info().Region.String(), nil
 }
 
 func (sw *Switch) filterPeer(p Peer) error {

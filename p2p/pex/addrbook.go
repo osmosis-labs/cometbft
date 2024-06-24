@@ -294,7 +294,7 @@ func (a *addrBook) Empty() bool {
 	return a.Size() == 0
 }
 
-func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
+func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegion bool, useRegion bool) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -334,39 +334,50 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 			}
 		}
 
-		// Filter the bucket by region
-		filteredBucket := make(map[string]*knownAddress)
-		// TEMP, only adding max of 5 from bucket
-		count := 0
-		for addrStr, ka := range bucket {
-			if ka.Region == "" {
-				fmt.Println("PickAddressWithRegion Getting region from IP", ka.Addr.IP.String())
-				region, err := getRegionFromIP(ka.Addr.IP.String())
-				if err != nil {
-					a.Logger.Error("Failed to get region from IP", "err", err)
-					return nil
+		if useRegion {
+			// Filter the bucket by region
+			filteredBucket := make(map[string]*knownAddress)
+			// TEMP, only adding max of 5 from bucket
+			count := 0
+			for addrStr, ka := range bucket {
+				if ka.Region == "" {
+					fmt.Println("Getting region from IP", ka.Addr.IP.String())
+					region, err := getRegionFromIP(ka.Addr.IP.String())
+					if err != nil {
+						a.Logger.Error("Failed to get region from IP", "err", err)
+						return nil
+					}
+					ka.Region = region
+					a.addrLookup[ka.ID()] = ka
+					count++
+				} else {
+					fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
-				ka.Region = region
-				a.addrLookup[ka.ID()] = ka
-				count++
-			} else {
-				fmt.Println("PickAddressWithRegion Region already set", ka.Addr, "region", ka.Region)
+				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region) {
+					fmt.Println("Adding address", ka.Addr, "region", ka.Region)
+					filteredBucket[addrStr] = ka
+				} else {
+					fmt.Println("Skipping address", ka.Addr, "region", ka.Region)
+				}
+				if count > 5 {
+					break
+				}
 			}
-			if ka.Region == region {
-				fmt.Println("PickAddressWithRegion Adding address", ka.Addr, "region", ka.Region)
-				filteredBucket[addrStr] = ka
-			} else {
-				fmt.Println("PickAddressWithRegion Skipping address", ka.Addr, "region", ka.Region)
-			}
-			if count > 5 {
-				break
-			}
-		}
 
-		if len(filteredBucket) > 0 {
+			if len(filteredBucket) > 0 {
+				// pick a random index and loop over the map to return that index
+				randIndex := a.rand.Intn(len(filteredBucket))
+				for _, ka := range filteredBucket {
+					if randIndex == 0 {
+						return ka.Addr
+					}
+					randIndex--
+				}
+			}
+		} else {
 			// pick a random index and loop over the map to return that index
-			randIndex := a.rand.Intn(len(filteredBucket))
-			for _, ka := range filteredBucket {
+			randIndex := a.rand.Intn(len(bucket))
+			for _, ka := range bucket {
 				if randIndex == 0 {
 					return ka.Addr
 				}
@@ -377,145 +388,18 @@ func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string)
 
 	// If no suitable bucket is found after 3 attempts, return nil
 	return nil
+}
+
+func (a *addrBook) PickAddressWithRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
+	return a.pickAddress(biasTowardsNewAddrs, region, true, true)
 }
 
 func (a *addrBook) PickAddressNotInRegion(biasTowardsNewAddrs int, region string) *p2p.NetAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	bookSize := a.size()
-	if bookSize <= 0 {
-		if bookSize < 0 {
-			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
-		}
-		return nil
-	}
-	if biasTowardsNewAddrs > 100 {
-		biasTowardsNewAddrs = 100
-	}
-	if biasTowardsNewAddrs < 0 {
-		biasTowardsNewAddrs = 0
-	}
-
-	// Bias between new and old addresses.
-	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
-	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
-
-	// Try up to 3 times to pick a non-empty bucket
-	for attempts := 0; attempts < 3; attempts++ {
-		// pick a random peer from a random bucket
-		var bucket map[string]*knownAddress
-		pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
-		if (pickFromOldBucket && a.nOld == 0) ||
-			(!pickFromOldBucket && a.nNew == 0) {
-			return nil
-		}
-		// loop until we pick a random non-empty bucket
-		for len(bucket) == 0 {
-			if pickFromOldBucket {
-				bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
-			} else {
-				bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
-			}
-		}
-
-		// Filter the bucket by region
-		filteredBucket := make(map[string]*knownAddress)
-		// TEMP, only adding max of 5 from bucket
-		count := 0
-		for addrStr, ka := range bucket {
-			if ka.Region == "" {
-				fmt.Println("PickAddressNotInRegion Getting region from IP", ka.Addr.IP.String())
-				region, err := getRegionFromIP(ka.Addr.IP.String())
-				if err != nil {
-					a.Logger.Error("Failed to get region from IP", "err", err)
-					return nil
-				}
-				ka.Region = region
-				a.addrLookup[ka.ID()] = ka
-				count++
-			} else {
-				fmt.Println("PickAddressNotInRegion Region already set", ka.Addr, "region", ka.Region)
-			}
-			if ka.Region != region {
-				fmt.Println("PickAddressNotInRegion Adding address", ka.Addr, "region", ka.Region)
-				filteredBucket[addrStr] = ka
-			} else {
-				fmt.Println("PickAddressNotInRegion Skipping address", ka.Addr, "region", ka.Region)
-			}
-			if count > 5 {
-				break
-			}
-		}
-
-		if len(filteredBucket) > 0 {
-			// pick a random index and loop over the map to return that index
-			randIndex := a.rand.Intn(len(filteredBucket))
-			for _, ka := range filteredBucket {
-				if randIndex == 0 {
-					return ka.Addr
-				}
-				randIndex--
-			}
-		}
-	}
-
-	// If no suitable bucket is found after 3 attempts, return nil
-	return nil
+	return a.pickAddress(biasTowardsNewAddrs, region, false, true)
 }
 
-// PickAddress implements AddrBook. It picks an address to connect to.
-// The address is picked randomly from an old or new bucket according
-// to the biasTowardsNewAddrs argument, which must be between [0, 100] (or else is truncated to that range)
-// and determines how biased we are to pick an address from a new bucket.
-// PickAddress returns nil if the AddrBook is empty or if we try to pick
-// from an empty bucket.
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	bookSize := a.size()
-	if bookSize <= 0 {
-		if bookSize < 0 {
-			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))
-		}
-		return nil
-	}
-	if biasTowardsNewAddrs > 100 {
-		biasTowardsNewAddrs = 100
-	}
-	if biasTowardsNewAddrs < 0 {
-		biasTowardsNewAddrs = 0
-	}
-
-	// Bias between new and old addresses.
-	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
-	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
-
-	// pick a random peer from a random bucket
-	var bucket map[string]*knownAddress
-	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
-	if (pickFromOldBucket && a.nOld == 0) ||
-		(!pickFromOldBucket && a.nNew == 0) {
-		return nil
-	}
-	// loop until we pick a random non-empty bucket
-	for len(bucket) == 0 {
-		if pickFromOldBucket {
-			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
-		} else {
-			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
-		}
-	}
-	// pick a random index and loop over the map to return that index
-	randIndex := a.rand.Intn(len(bucket))
-	for _, ka := range bucket {
-		if randIndex == 0 {
-			return ka.Addr
-		}
-		randIndex--
-	}
-	return nil
+	return a.pickAddress(biasTowardsNewAddrs, "", false, false)
 }
 
 // MarkGood implements AddrBook - it marks the peer as good and
@@ -837,34 +721,34 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	return oldest
 }
 
-func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string) error {
+func (a *addrBook) addAddressCommon(addr, src *p2p.NetAddress) (*knownAddress, error) {
 	if addr == nil || src == nil {
-		return ErrAddrBookNilAddr{addr, src}
+		return nil, ErrAddrBookNilAddr{addr, src}
 	}
 
 	if err := addr.Valid(); err != nil {
-		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
+		return nil, ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
 	}
 
 	if _, ok := a.badPeers[addr.ID]; ok {
-		return ErrAddressBanned{addr}
+		return nil, ErrAddressBanned{addr}
 	}
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
-		return ErrAddrBookPrivate{addr}
+		return nil, ErrAddrBookPrivate{addr}
 	}
 
 	if _, ok := a.privateIDs[src.ID]; ok {
-		return ErrAddrBookPrivateSrc{src}
+		return nil, ErrAddrBookPrivateSrc{src}
 	}
 
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
-		return ErrAddrBookSelf{addr}
+		return nil, ErrAddrBookSelf{addr}
 	}
 
 	if a.routabilityStrict && !addr.Routable() {
-		return ErrAddrBookNonRoutable{addr}
+		return nil, ErrAddrBookNonRoutable{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -873,19 +757,28 @@ func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string
 		// Thereby avoiding issues with a node on the network attempting to change
 		// the IP of a known node ID. (Which could yield an eclipse attack on the node)
 		if ka.isOld() && ka.Addr.ID == addr.ID {
-			return nil
+			return nil, nil
 		}
 		// Already in max new buckets.
 		if len(ka.Buckets) == maxNewBucketsPerAddress {
-			return nil
+			return nil, nil
 		}
 		// The more entries we have, the less likely we are to add more.
 		factor := int32(2 * len(ka.Buckets))
 		if a.rand.Int31n(factor) != 0 {
-			return nil
+			return nil, nil
 		}
 	} else {
 		ka = newKnownAddress(addr, src)
+	}
+
+	return ka, nil
+}
+
+func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string) error {
+	ka, err := a.addAddressCommon(addr, src)
+	if err != nil || ka == nil {
+		return err
 	}
 	ka.Region = region
 
@@ -896,57 +789,10 @@ func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string
 	return a.addToNewBucket(ka, bucket)
 }
 
-// adds the address to a "new" bucket. if its already in one,
-// it only adds it probabilistically
 func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
-	if addr == nil || src == nil {
-		return ErrAddrBookNilAddr{addr, src}
-	}
-
-	if err := addr.Valid(); err != nil {
-		return ErrAddrBookInvalidAddr{Addr: addr, AddrErr: err}
-	}
-
-	if _, ok := a.badPeers[addr.ID]; ok {
-		return ErrAddressBanned{addr}
-	}
-
-	if _, ok := a.privateIDs[addr.ID]; ok {
-		return ErrAddrBookPrivate{addr}
-	}
-
-	if _, ok := a.privateIDs[src.ID]; ok {
-		return ErrAddrBookPrivateSrc{src}
-	}
-
-	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
-	if _, ok := a.ourAddrs[addr.String()]; ok {
-		return ErrAddrBookSelf{addr}
-	}
-
-	if a.routabilityStrict && !addr.Routable() {
-		return ErrAddrBookNonRoutable{addr}
-	}
-
-	ka := a.addrLookup[addr.ID]
-	if ka != nil {
-		// If its already old and the address ID's are the same, ignore it.
-		// Thereby avoiding issues with a node on the network attempting to change
-		// the IP of a known node ID. (Which could yield an eclipse attack on the node)
-		if ka.isOld() && ka.Addr.ID == addr.ID {
-			return nil
-		}
-		// Already in max new buckets.
-		if len(ka.Buckets) == maxNewBucketsPerAddress {
-			return nil
-		}
-		// The more entries we have, the less likely we are to add more.
-		factor := int32(2 * len(ka.Buckets))
-		if a.rand.Int31n(factor) != 0 {
-			return nil
-		}
-	} else {
-		ka = newKnownAddress(addr, src)
+	ka, err := a.addAddressCommon(addr, src)
+	if err != nil || ka == nil {
+		return err
 	}
 
 	bucket, err := a.calcNewBucket(addr, src)

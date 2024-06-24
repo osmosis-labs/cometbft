@@ -36,7 +36,6 @@ func (mp *mockPeer) RemoteAddr() net.Addr            { return &net.TCPAddr{IP: m
 func (mp *mockPeer) CloseConn() error                { return nil }
 func (mp *mockPeer) GetRemovalFailed() bool          { return false }
 func (mp *mockPeer) SetRemovalFailed()               {}
-func (mp *mockPeer) GetRegion() string               { return "" }
 
 // Returns a mock peer
 func newMockPeer(ip net.IP) *mockPeer {
