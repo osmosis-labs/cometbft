@@ -498,6 +498,12 @@ func (r *Reactor) ensurePeersCommon(regionAware bool) {
 
 		reserveSizeInRegion := cmtmath.MaxInt((numToDialInSameRegion+1)/2, 5)
 		reserveSizeOutOfRegion := cmtmath.MaxInt((numToDialInOtherRegion+1)/2, 5)
+		if numToDialInSameRegion == 0 {
+			reserveSizeInRegion = 0
+		}
+		if numToDialInOtherRegion == 0 {
+			reserveSizeOutOfRegion = 0
+		}
 
 		// First iteration: Dial peers in the same region
 		for i := 0; i < maxAttempts && len(toDialInRegion) < numToDialInSameRegion+reserveSizeInRegion; i++ {
