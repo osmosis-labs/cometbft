@@ -355,7 +355,7 @@ func (a *addrBook) pickAddress(biasTowardsNewAddrs int, region string, matchRegi
 				} else {
 					fmt.Println("Region already set", ka.Addr, "region", ka.Region)
 				}
-				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region) {
+				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
 					fmt.Println("Adding address", ka.Addr, "region", ka.Region)
 					filteredBucket[addrStr] = ka
 				} else {
