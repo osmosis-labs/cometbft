@@ -166,10 +166,12 @@ func NewSwitch(
 
 type ipInfo struct {
 	Status      string
+	Message     string
 	CountryCode string
 }
 
 // getRegion retrieves the region associated with a given IP address.
+// If the IP address is an empty string, it retrieves the region for the current machine's IP address.
 // If the IP address is an empty string, it retrieves the region for the current machine's IP address.
 func GetRegionFromIP(ip string) (string, error) {
 	var url string
@@ -178,7 +180,7 @@ func GetRegionFromIP(ip string) (string, error) {
 	} else if ip == "0.0.0.0" {
 		return "", fmt.Errorf("invalid IP address: %s", ip)
 	} else {
-		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,countryCode", ip)
+		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,message,countryCode", ip)
 	}
 
 	req, err := http.Get(url)
@@ -199,6 +201,9 @@ func GetRegionFromIP(ip string) (string, error) {
 	}
 
 	if ipInfo.Status != "success" {
+		if ipInfo.Message == "private range" || ipInfo.Message == "reserved range" {
+			return "Unknown", nil
+		}
 		return "", fmt.Errorf("failed to get country from IP %s", ip)
 	}
 
