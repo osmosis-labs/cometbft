@@ -922,6 +922,7 @@ func (sw *Switch) filterPeer(p Peer) error {
 		return ErrRejected{id: p.ID(), isDuplicate: true}
 	}
 
+	fmt.Println("filterPeer ", p)
 	if p.SocketAddr().IP.String() == "0.0.0.0" {
 		return ErrRejected{id: p.ID(), err: errors.New("peer address is 0.0.0.0")}
 	}
@@ -1007,6 +1008,7 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 
 	// Start all the reactor protocols on the peer.
+	fmt.Println("addPeer AddPeer ", p)
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(p)
 	}
