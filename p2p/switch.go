@@ -834,6 +834,7 @@ func (sw *Switch) acceptRoutine() {
 			}
 		}
 
+		fmt.Println("acceptRoutine addPeer ", p)
 		if err := sw.addPeer(p); err != nil {
 			sw.transport.Cleanup(p)
 			if p.IsRunning() {
@@ -895,6 +896,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return err
 	}
 
+	fmt.Println("addOutboundPeerWithConfig addPeer ", p)
 	if err := sw.addPeer(p); err != nil {
 		sw.transport.Cleanup(p)
 		if p.IsRunning() {
