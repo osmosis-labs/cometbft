@@ -226,6 +226,7 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	defer a.mtx.Unlock()
 
 	if a.isRegionTracking {
+		fmt.Println("GetRegionFromIP AddAddress")
 		region, err := p2p.GetRegionFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
@@ -280,6 +281,7 @@ func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 
 	ka, exists := a.addrLookup[addr.ID]
 	if !exists || ka.Region == "" {
+		fmt.Println("GetRegionFromIP GetAddressRegion")
 		region, err := p2p.GetRegionFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
@@ -357,6 +359,7 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 				// If the region is not set, we will attempt to get it from the IP address
 				// if we have not exceeded the region query limit for the current period.
 				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
+					fmt.Println("GetRegionFromIP pickAddressInternal")
 					region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
 					a.curRegionQueryCount++
 					if err != nil {
