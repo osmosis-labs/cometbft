@@ -536,31 +536,30 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 		// Iterate until we either have either dialed the desired number of peers
 		// or we have depleted the number we can dial.
 
-		if len(toDialInRegion) < numToDialInSameRegion {
-			try := r.book.PickAddressInRegion(newBias, r.Switch.MyRegion)
-			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
-				if _, selected := toDialInRegion[try.ID]; !selected {
-					toDialInRegion[try.ID] = try
-				}
-			}
-		}
-		if len(toDialOutOfRegion) < numToDialInOtherRegion {
-			try := r.book.PickAddressOutsideRegion(newBias, r.Switch.MyRegion)
-			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
-				if _, selected := toDialOutOfRegion[try.ID]; !selected {
-					toDialOutOfRegion[try.ID] = try
-				}
-			}
-		}
-
-		// Check for GCP peers
-		if len(toDialGCP) < maxOutboundPeersInGCP {
+		if swConfig.GCPFilter && len(toDialGCP) < maxOutboundPeersInGCP {
 			try := r.book.PickAddress(newBias)
 			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
 				_, org, err := r.book.GetAddressRegionAndOrg(try)
 				if err == nil && strings.Contains(org, "Google Cloud") {
 					if _, selected := toDialGCP[try.ID]; !selected {
 						toDialGCP[try.ID] = try
+					}
+				}
+			}
+		} else {
+			if len(toDialInRegion) < numToDialInSameRegion {
+				try := r.book.PickAddressInRegion(newBias, r.Switch.MyRegion)
+				if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
+					if _, selected := toDialInRegion[try.ID]; !selected {
+						toDialInRegion[try.ID] = try
+					}
+				}
+			}
+			if len(toDialOutOfRegion) < numToDialInOtherRegion {
+				try := r.book.PickAddressOutsideRegion(newBias, r.Switch.MyRegion)
+				if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
+					if _, selected := toDialOutOfRegion[try.ID]; !selected {
+						toDialOutOfRegion[try.ID] = try
 					}
 				}
 			}
