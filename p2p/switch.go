@@ -581,6 +581,7 @@ func (sw *Switch) dialPeersAsync(netAddrs []*NetAddress) {
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
+				fmt.Println("dialPeersAsync AddAddress ", netAddr)
 				if err := sw.addrBook.AddAddress(netAddr, ourAddr); err != nil {
 					if isPrivateAddr(err) {
 						sw.Logger.Debug("Won't add peer's address to addrbook", "err", err)

@@ -210,6 +210,7 @@ func (r *Reactor) AddPeer(p Peer) {
 
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
+		fmt.Println("AddPeer AddAddress ", addr)
 		err = r.book.AddAddress(addr, src)
 		r.logErrAddrBook(err)
 	}
@@ -372,6 +373,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	for _, netAddr := range addrs {
 		// NOTE: we check netAddr validity and routability in book#AddAddress.
+		fmt.Println("ReceiveAddrs AddAddress ", netAddr)
 		err = r.book.AddAddress(netAddr, srcAddr)
 		if err != nil {
 			r.logErrAddrBook(err)
