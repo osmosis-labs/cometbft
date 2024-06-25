@@ -471,7 +471,7 @@ func (r *Reactor) ensurePeers() {
 	// not perfect, but somewhat ensures that we prioritize connecting to more-vetted
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmtmath.MinInt(out, 8)*10 + 10
-	maxAttempts := numToDial * 3
+	maxAttempts := cmtmath.MaxInt((numToDial * 3), 5)
 	swConfig := r.Switch.GetConfig()
 
 	var toDial map[p2p.ID]*p2p.NetAddress
@@ -496,10 +496,8 @@ func (r *Reactor) ensurePeers() {
 
 func (r *Reactor) collectAddresses(newBias, numToDial, maxAttempts int) map[p2p.ID]*p2p.NetAddress {
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
-	reserveSize := 0
-	//reserveSize := cmtmath.MaxInt((numToDial+1)/2, 5)
 
-	for i := 0; i < maxAttempts && len(toDial) < numToDial+reserveSize; i++ {
+	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
 		try := r.book.PickAddress(newBias)
 		if try == nil || r.Switch.IsDialingOrExistingAddress(try) {
 			continue
@@ -522,14 +520,15 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 	currentOutboundInOtherRegion := r.Switch.CurrentNumOutboundPeersInOtherRegion
 	maxOutboundPeersInOtherRegion := swConfig.MaxNumOutboundPeers - int(swConfig.PercentPeersInSameRegion*float64(swConfig.MaxNumOutboundPeers))
 
+	// Calculate the number of peers to dial in the same region and in other region
 	numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 	numToDialInSameRegion := numToDial - numToDialInOtherRegion
 
-	reserveSizeInRegion := cmtmath.MaxInt((numToDialInSameRegion+1)/2, 5)
-	reserveSizeOutOfRegion := cmtmath.MaxInt((numToDialInOtherRegion+1)/2, 5)
-
 	for i := 0; i < maxAttempts; i++ {
-		if len(toDialInRegion) < numToDialInSameRegion+reserveSizeInRegion {
+		// Iterate until we either have either dialed the desired number of peers
+		// or we have depleted the number we can dial.
+
+		if len(toDialInRegion) < numToDialInSameRegion {
 			try := r.book.PickAddressInRegion(newBias, r.Switch.MyRegion)
 			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
 				if _, selected := toDialInRegion[try.ID]; !selected {
@@ -537,7 +536,7 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 				}
 			}
 		}
-		if len(toDialOutOfRegion) < numToDialInOtherRegion+reserveSizeOutOfRegion {
+		if len(toDialOutOfRegion) < numToDialInOtherRegion {
 			try := r.book.PickAddressOutsideRegion(newBias, r.Switch.MyRegion)
 			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
 				if _, selected := toDialOutOfRegion[try.ID]; !selected {
