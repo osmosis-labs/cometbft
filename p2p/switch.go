@@ -791,40 +791,21 @@ func (sw *Switch) acceptRoutine() {
 			isSameRegion := region == sw.MyRegion
 
 			// Calculate the maximum allowed peers for both same region and other regions
-			maxOutboundPeersInSameRegion := int(sw.config.PercentPeersInSameRegion * float64(sw.config.MaxNumOutboundPeers))
 			maxInboundPeersInSameRegion := int(sw.config.PercentPeersInSameRegion * float64(sw.config.MaxNumInboundPeers))
-			maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - maxOutboundPeersInSameRegion
 			maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - maxInboundPeersInSameRegion
 
 			if isSameRegion {
-				out, in, _ := sw.NumPeers()
-
-				if p.IsOutbound() {
-					if (out-sw.CurrentNumOutboundPeersInOtherRegion)+1 > maxOutboundPeersInSameRegion {
-						sw.Logger.Debug("exceeds max percent peers in same region")
-						sw.transport.Cleanup(p)
-						continue
-					}
-				} else {
-					if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
-						sw.Logger.Debug("exceeds max percent peers in same region")
-						sw.transport.Cleanup(p)
-						continue
-					}
+				_, in, _ := sw.NumPeers()
+				if (in-sw.CurrentNumInboundPeersInOtherRegion)+1 > maxInboundPeersInSameRegion {
+					sw.Logger.Debug("exceeds max percent inbound peers in same region")
+					sw.transport.Cleanup(p)
+					continue
 				}
 			} else {
-				if p.IsOutbound() {
-					if sw.CurrentNumOutboundPeersInOtherRegion+1 > maxOutboundPeersInOtherRegion {
-						sw.Logger.Debug("exceeds max percent peers in other regions")
-						sw.transport.Cleanup(p)
-						continue
-					}
-				} else {
-					if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
-						sw.Logger.Debug("exceeds max percent peers in other regions")
-						sw.transport.Cleanup(p)
-						continue
-					}
+				if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
+					sw.Logger.Debug("exceeds max percent inbound peers in other regions")
+					sw.transport.Cleanup(p)
+					continue
 				}
 			}
 		}
