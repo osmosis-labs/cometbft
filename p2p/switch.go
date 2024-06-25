@@ -184,7 +184,7 @@ func GetIPInfoFromIP(ip string) (IpInfo, error) {
 	} else if ip == "0.0.0.0" {
 		return IpInfo{}, fmt.Errorf("invalid IP address: %s", ip)
 	} else {
-		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,message,countryCode", ip)
+		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,message,countryCode,org", ip)
 	}
 
 	req, err := http.Get(url) // #nosec G107
