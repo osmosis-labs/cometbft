@@ -768,13 +768,6 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
-		if p.SocketAddr().IP.String() == "0.0.0.0" {
-			fmt.Println("TEST", p.RemoteIP().String())
-			sw.Logger.Info("Ignoring peer with IP 0.0.0.0")
-			sw.transport.Cleanup(p)
-			continue
-		}
-
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers.
 			_, in, _ := sw.NumPeers()
@@ -791,6 +784,18 @@ func (sw *Switch) acceptRoutine() {
 				continue
 			}
 
+		}
+
+		addr, err := p.NodeInfo().NetAddress()
+		if err != nil {
+			sw.transport.Cleanup(p)
+			continue
+		}
+		if addr.IP.String() == "0.0.0.0" {
+			// Node doesn't have their IP set, lets attempt to assume from the peers listening address
+			fmt.Println("AddPeer RemoteIP ", p.RemoteIP())
+			fmt.Println("AddPeer RemoteAddr ", p.SocketAddr().IP)
+			addr.IP = p.SocketAddr().IP
 		}
 
 		if sw.config.RegionAware {
