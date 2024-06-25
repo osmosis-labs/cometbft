@@ -175,6 +175,8 @@ func GetRegionFromIP(ip string) (string, error) {
 	var url string
 	if ip == "" {
 		url = "http://ip-api.com/json/"
+	} else if ip == "0.0.0.0" {
+		return "", fmt.Errorf("invalid IP address: %s", ip)
 	} else {
 		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,countryCode", ip)
 	}
