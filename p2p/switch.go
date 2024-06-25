@@ -440,25 +440,16 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	// https://github.com/tendermint/tendermint/issues/3338
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
-		if peer.IsOutbound() {
-			if sw.config.RegionAware {
-				region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
-				if err != nil {
-					sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
-					return
-				}
-				if region != sw.MyRegion {
-					sw.CurrentNumOutboundPeersInOtherRegion--
-				}
+		if sw.config.RegionAware {
+			region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
+			if err != nil {
+				sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
+				return
 			}
-		} else {
-			if sw.config.RegionAware {
-				region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
-				if err != nil {
-					sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
-					return
-				}
-				if region != sw.MyRegion {
+			if region != sw.MyRegion {
+				if peer.IsOutbound() {
+					sw.CurrentNumOutboundPeersInOtherRegion--
+				} else {
 					sw.CurrentNumInboundPeersInOtherRegion--
 				}
 			}
