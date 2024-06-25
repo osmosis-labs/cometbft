@@ -269,6 +269,7 @@ func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
 
 	ka, exists := a.addrLookup[addr.ID]
 	if !exists || ka.Region == "" {
+		// If the region is not set, or the address is not in the lookup table, we will attempt to get it from the IP address
 		region, err := p2p.GetRegionFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
