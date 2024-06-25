@@ -225,17 +225,7 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	if a.isRegionTracking {
-		region, err := p2p.GetRegionFromIP(addr.IP.String())
-		a.curRegionQueryCount++
-		if err != nil {
-			return err
-		}
-
-		return a.addAddressWithRegion(addr, src, region)
-	} else {
-		return a.addAddress(addr, src)
-	}
+	return a.addAddress(addr, src)
 }
 
 // RemoveAddress implements AddrBook - removes the address from the book.
@@ -788,24 +778,6 @@ func (a *addrBook) addAddressCommon(addr, src *p2p.NetAddress) (*knownAddress, e
 	return ka, nil
 }
 
-// addAddressWithRegion adds an address to a "new" bucket with a specified region.
-// If the address is already in a bucket, it only adds it probabilistically.
-// Returns an error if the address is non-routable or if it fails to calculate the bucket.
-// The region argument specifies the region to associate with the address.
-func (a *addrBook) addAddressWithRegion(addr, src *p2p.NetAddress, region string) error {
-	ka, err := a.addAddressCommon(addr, src)
-	if err != nil || ka == nil {
-		return err
-	}
-	ka.Region = region
-
-	bucket, err := a.calcNewBucket(addr, src)
-	if err != nil {
-		return err
-	}
-	return a.addToNewBucket(ka, bucket)
-}
-
 // addAddress adds an address to a "new" bucket.
 // If the address is already in a bucket, it only adds it probabilistically.
 // Returns an error if the address is non-routable or if it fails to calculate the bucket.
@@ -813,6 +785,15 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	ka, err := a.addAddressCommon(addr, src)
 	if err != nil || ka == nil {
 		return err
+	}
+
+	if a.isRegionTracking {
+		region, err := p2p.GetRegionFromIP(addr.IP.String())
+		a.curRegionQueryCount++
+		if err != nil {
+			return err
+		}
+		ka.Region = region
 	}
 
 	bucket, err := a.calcNewBucket(addr, src)
