@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -767,7 +768,8 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
-		if p.RemoteIP().String() == "0.0.0.0" {
+		if p.SocketAddr().IP.String() == "0.0.0.0" {
+			fmt.Println("TEST", p.RemoteIP().String())
 			sw.Logger.Info("Ignoring peer with IP 0.0.0.0")
 			sw.transport.Cleanup(p)
 			continue
@@ -918,6 +920,10 @@ func (sw *Switch) filterPeer(p Peer) error {
 	// Avoid duplicate
 	if sw.peers.Has(p.ID()) {
 		return ErrRejected{id: p.ID(), isDuplicate: true}
+	}
+
+	if p.SocketAddr().IP.String() == "0.0.0.0" {
+		return ErrRejected{id: p.ID(), err: errors.New("peer address is 0.0.0.0")}
 	}
 
 	errc := make(chan error, len(sw.peerFilters))
