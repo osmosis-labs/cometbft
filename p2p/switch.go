@@ -767,6 +767,12 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
+		if p.RemoteIP().String() == "0.0.0.0" {
+			sw.Logger.Info("Ignoring peer with IP 0.0.0.0")
+			sw.transport.Cleanup(p)
+			continue
+		}
+
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers.
 			_, in, _ := sw.NumPeers()
