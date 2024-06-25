@@ -229,7 +229,6 @@ func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 		region, err := p2p.GetRegionFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
-			a.Logger.Error("Failed to get region from IP", "err", err)
 			return err
 		}
 
@@ -360,7 +359,6 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 					region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
 					a.curRegionQueryCount++
 					if err != nil {
-						a.Logger.Error("Failed to get region from IP", "err", err)
 						return nil
 					}
 					ka.Region = region
