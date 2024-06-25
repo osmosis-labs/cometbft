@@ -1073,5 +1073,8 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 }
 
 func (a *addrBook) ResetCurRegionQueryCount() {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
 	a.curRegionQueryCount = 0
 }
