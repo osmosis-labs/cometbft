@@ -183,7 +183,7 @@ func GetRegionFromIP(ip string) (string, error) {
 		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,message,countryCode", ip)
 	}
 
-	req, err := http.Get(url)
+	req, err := http.Get(url) // #nosec G107
 	if err != nil {
 		return "", err
 	}
