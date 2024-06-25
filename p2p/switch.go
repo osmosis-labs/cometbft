@@ -154,10 +154,10 @@ func NewSwitch(
 		}
 		sw.MyRegion = myRegion
 
-		// Make sure that the MaxPercentPeersInSameRegion does not exceed some hard coded value.
+		// Make sure that the PercentPeersInSameRegion does not exceed some hard coded value.
 		// If it does, replace it with the max
-		if cfg.MaxPercentPeersInSameRegion > 0.9 {
-			cfg.MaxPercentPeersInSameRegion = config.DefaultMaxPercentPeersInSameRegion
+		if cfg.PercentPeersInSameRegion > 0.9 {
+			cfg.PercentPeersInSameRegion = config.DefaultPercentPeersInSameRegion
 		}
 	}
 
@@ -800,8 +800,8 @@ func (sw *Switch) acceptRoutine() {
 			isSameRegion := region == sw.MyRegion
 
 			// Calculate the maximum allowed peers for both same region and other regions
-			maxOutboundPeersInSameRegion := int(sw.config.MaxPercentPeersInSameRegion * float64(sw.config.MaxNumOutboundPeers))
-			maxInboundPeersInSameRegion := int(sw.config.MaxPercentPeersInSameRegion * float64(sw.config.MaxNumInboundPeers))
+			maxOutboundPeersInSameRegion := int(sw.config.PercentPeersInSameRegion * float64(sw.config.MaxNumOutboundPeers))
+			maxInboundPeersInSameRegion := int(sw.config.PercentPeersInSameRegion * float64(sw.config.MaxNumInboundPeers))
 			maxOutboundPeersInOtherRegion := sw.config.MaxNumOutboundPeers - maxOutboundPeersInSameRegion
 			maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - maxInboundPeersInSameRegion
 

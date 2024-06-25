@@ -40,7 +40,7 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultMaxPercentPeersInSameRegion     = float64(0.9) // Target 90% of peers in the same region
+	DefaultPercentPeersInSameRegion        = float64(0.9) // Target 90% of peers in the same region
 	DefaultRegionQueriesPerPeerQueryPeriod = 20           // Query 20 peers per peer query period (30s), used to prevent hitting rate limit on free API
 
 	DefaultTendermintDir = ".cometbft"
@@ -636,7 +636,7 @@ type P2PConfig struct { //nolint: maligned
 
 	// Configs for connecting to peers in the same region
 	RegionAware                     bool    `mapstructure:"region_aware"`
-	MaxPercentPeersInSameRegion     float64 `mapstructure:"max_percent_peers_in_same_region"`
+	PercentPeersInSameRegion        float64 `mapstructure:"percent_peers_in_same_region"`
 	RegionQueriesPerPeerQueryPeriod int     `mapstructure:"region_queries_per_peer_query_period"`
 }
 
@@ -663,7 +663,7 @@ func DefaultP2PConfig() *P2PConfig {
 		TestFuzz:                        false,
 		TestFuzzConfig:                  DefaultFuzzConnConfig(),
 		RegionAware:                     false,
-		MaxPercentPeersInSameRegion:     DefaultMaxPercentPeersInSameRegion,
+		PercentPeersInSameRegion:        DefaultPercentPeersInSameRegion,
 		RegionQueriesPerPeerQueryPeriod: DefaultRegionQueriesPerPeerQueryPeriod,
 	}
 }

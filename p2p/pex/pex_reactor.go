@@ -484,7 +484,7 @@ func (r *Reactor) ensurePeers(regionAware bool) {
 		swConfig := r.Switch.GetConfig()
 
 		currentOutboundInOtherRegion := r.Switch.CurrentNumOutboundPeersInOtherRegion
-		maxOutboundPeersInOtherRegion := swConfig.MaxNumOutboundPeers - int(swConfig.MaxPercentPeersInSameRegion*float64(swConfig.MaxNumOutboundPeers))
+		maxOutboundPeersInOtherRegion := swConfig.MaxNumOutboundPeers - int(swConfig.PercentPeersInSameRegion*float64(swConfig.MaxNumOutboundPeers))
 
 		numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 		numToDialInSameRegion := numToDial - numToDialInOtherRegion
