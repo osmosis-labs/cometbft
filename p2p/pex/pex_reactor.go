@@ -527,7 +527,10 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 	numToDialInSameRegion := numToDial - numToDialInOtherRegion
 
 	// Calculate the maximum allowed peers for GCP
-	maxOutboundPeersInGCP := int(swConfig.PercentGCPPeers * float64(swConfig.MaxNumOutboundPeers))
+	maxOutboundPeersInGCP := 0
+	if swConfig.GCPFilter {
+		maxOutboundPeersInGCP = int(swConfig.PercentGCPPeers * float64(swConfig.MaxNumOutboundPeers))
+	}
 
 	for i := 0; i < maxAttempts; i++ {
 		// Iterate until we either have either dialed the desired number of peers

@@ -483,12 +483,12 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 			if region != sw.MyRegion {
 				if peer.IsOutbound() {
 					sw.CurrentNumOutboundPeersInOtherRegion--
-					if strings.Contains(org, "Google Cloud") {
+					if sw.config.GCPFilter && strings.Contains(org, "Google Cloud") {
 						sw.CurrentNumOutboundPeersInGCP--
 					}
 				} else {
 					sw.CurrentNumInboundPeersInOtherRegion--
-					if strings.Contains(org, "Google Cloud") {
+					if sw.config.GCPFilter && strings.Contains(org, "Google Cloud") {
 						sw.CurrentNumOutboundPeersInGCP--
 					}
 				}
@@ -853,7 +853,7 @@ func (sw *Switch) acceptRoutine() {
 				}
 			}
 
-			if isGCP {
+			if isGCP && sw.config.GCPFilter {
 				if sw.CurrentNumInboundPeersInGCP+1 > maxInboundPeersInGCP {
 					sw.Logger.Debug("exceeds max percent inbound peers in GCP")
 					sw.transport.Cleanup(p)
@@ -1015,12 +1015,12 @@ func (sw *Switch) addPeer(p Peer) error {
 		}
 		if p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumOutboundPeersInOtherRegion++
-			if strings.Contains(org, "Google Cloud") {
+			if sw.config.GCPFilter && strings.Contains(org, "Google Cloud") {
 				sw.CurrentNumOutboundPeersInGCP++
 			}
 		} else if !p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumInboundPeersInOtherRegion++
-			if strings.Contains(org, "Google Cloud") {
+			if sw.config.GCPFilter && strings.Contains(org, "Google Cloud") {
 				sw.CurrentNumInboundPeersInGCP++
 			}
 		}
