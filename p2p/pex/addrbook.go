@@ -783,6 +783,8 @@ func (a *addrBook) addAddressCommon(addr, src *p2p.NetAddress) (*knownAddress, e
 		}
 		// The more entries we have, the less likely we are to add more.
 		factor := int32(2 * len(ka.Buckets))
+		fmt.Println("factor", factor)
+		fmt.Println("len(ka.Buckets)", len(ka.Buckets))
 		if a.rand.Int31n(factor) != 0 {
 			return nil, nil
 		}
