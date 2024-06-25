@@ -496,7 +496,8 @@ func (r *Reactor) ensurePeers() {
 
 func (r *Reactor) collectAddresses(newBias, numToDial, maxAttempts int) map[p2p.ID]*p2p.NetAddress {
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
-	reserveSize := cmtmath.MaxInt((numToDial+1)/2, 5)
+	reserveSize := 0
+	//reserveSize := cmtmath.MaxInt((numToDial+1)/2, 5)
 
 	for i := 0; i < maxAttempts && len(toDial) < numToDial+reserveSize; i++ {
 		try := r.book.PickAddress(newBias)
