@@ -205,6 +205,13 @@ func (r *Reactor) AddPeer(p Peer) {
 			return
 		}
 
+		if addr.IP.String() == "0.0.0.0" {
+			// Node doesn't have their IP set, lets attempt to assume from the peers listening address
+			fmt.Println("AddPeer RemoteIP ", p.RemoteIP())
+			fmt.Println("AddPeer RemoteAddr ", p.SocketAddr().IP)
+			addr.IP = p.SocketAddr().IP
+		}
+
 		// Make it explicit that addr and src are the same for an inbound peer.
 		src := addr
 
