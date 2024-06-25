@@ -319,9 +319,15 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
 
-	// Because we filter buckets by region, there are times where a bucket has either no addresses in the desired region,
-	// or we have no more region queries left in the current period. In these cases, we will attempt to pick from a different bucket.
-	for attempts := 0; attempts < 3; attempts++ {
+	// If we are using region specific selection, we filter buckets for the desired region, which sometimes
+	// might result in an empty bucket. This is why we allow multiple attempts to pick an address.
+	// If we are not using region specific selection, we only need to pick a random address from a random bucket once.
+	attempts := 1
+	if useRegion {
+		attempts = 3
+	}
+
+	for attempt := 0; attempt < attempts; attempt++ {
 		// pick a random peer from a random bucket
 		var bucket map[string]*knownAddress
 		pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
@@ -373,7 +379,7 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 		}
 	}
 
-	// If no suitable bucket is found after 3 attempts, return nil
+	// If no suitable bucket is found after the attempts, return nil
 	return nil
 }
 
