@@ -490,7 +490,7 @@ func (r *Reactor) ensurePeers() {
 
 	if r.book.NeedMoreAddrs() {
 		// If we still need more addresses, request more from peers or dial seeds.
-		r.requestMoreAddresses()
+		r.requestMoreAddresses(len(toDial))
 	}
 }
 
@@ -576,7 +576,7 @@ func (r *Reactor) dialAddresses(toDial map[p2p.ID]*p2p.NetAddress, numToDial int
 	}
 }
 
-func (r *Reactor) requestMoreAddresses() {
+func (r *Reactor) requestMoreAddresses(numDialed int) {
 	peers := r.Switch.Peers().List()
 	if len(peers) > 0 {
 		// 1) Pick a random peer and ask for more.
@@ -585,7 +585,7 @@ func (r *Reactor) requestMoreAddresses() {
 		r.RequestAddrs(peer)
 	}
 
-	if len(peers) == 0 {
+	if numDialed == 0 {
 		// 2) Dial seeds if we are not dialing anyone.
 		// This is done in addition to asking a peer for addresses to work-around
 		// peers not participating in PEX.
