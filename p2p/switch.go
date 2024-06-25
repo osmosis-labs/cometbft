@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/biter777/countries"
@@ -56,7 +57,7 @@ type AddrBook interface {
 	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
-	GetAddressRegion(*NetAddress) (string, error)
+	GetAddressRegionAndOrg(*NetAddress) (string, string, error)
 	Save()
 }
 
@@ -102,6 +103,8 @@ type Switch struct {
 	MyRegion                             string
 	CurrentNumOutboundPeersInOtherRegion int
 	CurrentNumInboundPeersInOtherRegion  int
+	CurrentNumOutboundPeersInGCP         int
+	CurrentNumInboundPeersInGCP          int
 }
 
 // NetAddress returns the address the switch is listening on.
@@ -164,47 +167,59 @@ func NewSwitch(
 	return sw
 }
 
-type ipInfo struct {
+type IpInfo struct {
 	Status      string
 	Message     string
 	CountryCode string
+	Org         string
 }
 
 // getRegion retrieves the region associated with a given IP address.
 // If the IP address is an empty string, it retrieves the region for the current machine's IP address.
 // If the IP address is an empty string, it retrieves the region for the current machine's IP address.
-func GetRegionFromIP(ip string) (string, error) {
+func GetIPInfoFromIP(ip string) (IpInfo, error) {
 	var url string
 	if ip == "" {
 		url = "http://ip-api.com/json/"
 	} else if ip == "0.0.0.0" {
-		return "", fmt.Errorf("invalid IP address: %s", ip)
+		return IpInfo{}, fmt.Errorf("invalid IP address: %s", ip)
 	} else {
 		url = fmt.Sprintf("http://ip-api.com/json/%s?fields=status,message,countryCode", ip)
 	}
 
 	req, err := http.Get(url) // #nosec G107
 	if err != nil {
-		return "", err
+		return IpInfo{}, err
 	}
 	defer req.Body.Close()
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		return "", err
+		return IpInfo{}, err
 	}
 
-	var ipInfo ipInfo
+	var ipInfo IpInfo
 	err = json.Unmarshal(body, &ipInfo)
 	if err != nil {
-		return "", err
+		return IpInfo{}, err
 	}
 
 	if ipInfo.Status != "success" {
 		if ipInfo.Message == "private range" || ipInfo.Message == "reserved range" {
+			return ipInfo, nil
+		}
+		return IpInfo{}, fmt.Errorf("failed to get country from IP %s", ip)
+	}
+
+	return ipInfo, nil
+}
+
+func GetRegionFromIPInfo(ipInfo IpInfo) (string, error) {
+	if ipInfo.Status != "success" {
+		if ipInfo.Message == "private range" || ipInfo.Message == "reserved range" {
 			return "Unknown", nil
 		}
-		return "", fmt.Errorf("failed to get country from IP %s", ip)
+		return "", fmt.Errorf("failed to get country from IP %s", ipInfo)
 	}
 
 	country := countries.ByName(ipInfo.CountryCode)
@@ -213,6 +228,25 @@ func GetRegionFromIP(ip string) (string, error) {
 	}
 
 	return country.Info().Region.String(), nil
+}
+
+func GetRegionAndOrgFromIP(ip string) (string, string, error) {
+	ipInfo, err := GetIPInfoFromIP(ip)
+	if err != nil {
+		return "", "", err
+	}
+
+	region, err := GetRegionFromIPInfo(ipInfo)
+	if err != nil {
+		return "", "", err
+	}
+
+	return region, ipInfo.Org, nil
+}
+
+func GetRegionFromIP(ip string) (string, error) {
+	region, _, err := GetRegionAndOrgFromIP(ip)
+	return region, err
 }
 
 // SwitchFilterTimeout sets the timeout used for peer filters.
@@ -441,7 +475,7 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
 		if sw.config.RegionAware {
-			region, err := sw.addrBook.GetAddressRegion(peer.SocketAddr())
+			region, org, err := sw.addrBook.GetAddressRegionAndOrg(peer.SocketAddr())
 			if err != nil {
 				sw.Logger.Error("error getting region of peer when stopping peer", "peer", peer.ID(), "err", err)
 				return
@@ -449,8 +483,14 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 			if region != sw.MyRegion {
 				if peer.IsOutbound() {
 					sw.CurrentNumOutboundPeersInOtherRegion--
+					if strings.Contains(org, "Google Cloud") {
+						sw.CurrentNumOutboundPeersInGCP--
+					}
 				} else {
 					sw.CurrentNumInboundPeersInOtherRegion--
+					if strings.Contains(org, "Google Cloud") {
+						sw.CurrentNumOutboundPeersInGCP--
+					}
 				}
 			}
 		}
@@ -782,17 +822,21 @@ func (sw *Switch) acceptRoutine() {
 
 		if sw.config.RegionAware {
 			// Note if the new peer is in the same region as us
-			region, err := sw.addrBook.GetAddressRegion(p.SocketAddr())
+			region, org, err := sw.addrBook.GetAddressRegionAndOrg(p.SocketAddr())
 			if err != nil {
 				sw.Logger.Error("error getting region of peer", "err", err)
 				sw.transport.Cleanup(p)
 				continue
 			}
 			isSameRegion := region == sw.MyRegion
+			isGCP := strings.Contains(org, "Google Cloud")
 
 			// Calculate the maximum allowed peers for both same region and other regions
 			maxInboundPeersInSameRegion := int(sw.config.PercentPeersInSameRegion * float64(sw.config.MaxNumInboundPeers))
 			maxInboundPeersInOtherRegion := sw.config.MaxNumInboundPeers - maxInboundPeersInSameRegion
+
+			// Calculate the maximum allowed peers for GCP
+			maxInboundPeersInGCP := int(sw.config.PercentGCPPeers * float64(sw.config.MaxNumInboundPeers))
 
 			if isSameRegion {
 				_, in, _ := sw.NumPeers()
@@ -804,6 +848,14 @@ func (sw *Switch) acceptRoutine() {
 			} else {
 				if sw.CurrentNumInboundPeersInOtherRegion+1 > maxInboundPeersInOtherRegion {
 					sw.Logger.Debug("exceeds max percent inbound peers in other regions")
+					sw.transport.Cleanup(p)
+					continue
+				}
+			}
+
+			if isGCP {
+				if sw.CurrentNumInboundPeersInGCP+1 > maxInboundPeersInGCP {
+					sw.Logger.Debug("exceeds max percent inbound peers in GCP")
 					sw.transport.Cleanup(p)
 					continue
 				}
@@ -956,15 +1008,21 @@ func (sw *Switch) addPeer(p Peer) error {
 	}
 	sw.metrics.Peers.Add(float64(1))
 	if sw.config.RegionAware {
-		region, err := sw.addrBook.GetAddressRegion(p.SocketAddr())
+		region, org, err := sw.addrBook.GetAddressRegionAndOrg(p.SocketAddr())
 		if err != nil {
 			sw.Logger.Error("error getting region of peer", "err", err)
 			return err
 		}
 		if p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumOutboundPeersInOtherRegion++
+			if strings.Contains(org, "Google Cloud") {
+				sw.CurrentNumOutboundPeersInGCP++
+			}
 		} else if !p.IsOutbound() && region != sw.MyRegion {
 			sw.CurrentNumInboundPeersInOtherRegion++
+			if strings.Contains(org, "Google Cloud") {
+				sw.CurrentNumInboundPeersInGCP++
+			}
 		}
 	}
 

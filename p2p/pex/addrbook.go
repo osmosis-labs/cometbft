@@ -50,7 +50,7 @@ type AddrBook interface {
 
 	// Check if the address is in the book
 	HasAddress(*p2p.NetAddress) bool
-	GetAddressRegion(addr *p2p.NetAddress) (string, error)
+	GetAddressRegionAndOrg(addr *p2p.NetAddress) (string, string, error)
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
@@ -263,21 +263,21 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 	return ka != nil
 }
 
-func (a *addrBook) GetAddressRegion(addr *p2p.NetAddress) (string, error) {
+func (a *addrBook) GetAddressRegionAndOrg(addr *p2p.NetAddress) (string, string, error) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
 	ka, exists := a.addrLookup[addr.ID]
 	if !exists || ka.Region == "" {
 		// If the region is not set, or the address is not in the lookup table, we will attempt to get it from the IP address
-		region, err := p2p.GetRegionFromIP(addr.IP.String())
+		region, org, err := p2p.GetRegionAndOrgFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
-		return region, nil
+		return region, org, nil
 	}
-	return ka.Region, nil
+	return ka.Region, ka.Org, nil
 }
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
@@ -353,12 +353,13 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 				// If the region is not set, we will attempt to get it from the IP address
 				// if we have not exceeded the region query limit for the current period.
 				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
-					region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
+					region, org, err := p2p.GetRegionAndOrgFromIP(ka.Addr.IP.String())
 					a.curRegionQueryCount++
 					if err != nil {
 						return nil
 					}
 					ka.Region = region
+					ka.Org = org
 					a.addrLookup[ka.ID()] = ka
 				}
 				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
@@ -795,12 +796,13 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	}
 
 	if a.isRegionTracking {
-		region, err := p2p.GetRegionFromIP(addr.IP.String())
+		region, org, err := p2p.GetRegionAndOrgFromIP(addr.IP.String())
 		a.curRegionQueryCount++
 		if err != nil {
 			return err
 		}
 		ka.Region = region
+		ka.Org = org
 	}
 
 	bucket, err := a.calcNewBucket(addr, src)

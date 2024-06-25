@@ -3,6 +3,7 @@ package pex
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -513,6 +514,7 @@ func (r *Reactor) collectAddresses(newBias, numToDial, maxAttempts int) map[p2p.
 func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) map[p2p.ID]*p2p.NetAddress {
 	toDialInRegion := make(map[p2p.ID]*p2p.NetAddress)
 	toDialOutOfRegion := make(map[p2p.ID]*p2p.NetAddress)
+	toDialGCP := make(map[p2p.ID]*p2p.NetAddress)
 
 	swConfig := r.Switch.GetConfig()
 	r.book.ResetCurRegionQueryCount()
@@ -523,6 +525,9 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 	// Calculate the number of peers to dial in the same region and in other region
 	numToDialInOtherRegion := maxOutboundPeersInOtherRegion - currentOutboundInOtherRegion
 	numToDialInSameRegion := numToDial - numToDialInOtherRegion
+
+	// Calculate the maximum allowed peers for GCP
+	maxOutboundPeersInGCP := int(swConfig.PercentGCPPeers * float64(swConfig.MaxNumOutboundPeers))
 
 	for i := 0; i < maxAttempts; i++ {
 		// Iterate until we either have either dialed the desired number of peers
@@ -544,6 +549,19 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 				}
 			}
 		}
+
+		// Check for GCP peers
+		if len(toDialGCP) < maxOutboundPeersInGCP {
+			try := r.book.PickAddress(newBias)
+			if try != nil && !r.Switch.IsDialingOrExistingAddress(try) {
+				_, org, err := r.book.GetAddressRegionAndOrg(try)
+				if err == nil && strings.Contains(org, "Google Cloud") {
+					if _, selected := toDialGCP[try.ID]; !selected {
+						toDialGCP[try.ID] = try
+					}
+				}
+			}
+		}
 	}
 
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
@@ -551,6 +569,9 @@ func (r *Reactor) collectAddressesByRegion(newBias, numToDial, maxAttempts int) 
 		toDial[k] = v
 	}
 	for k, v := range toDialOutOfRegion {
+		toDial[k] = v
+	}
+	for k, v := range toDialGCP {
 		toDial[k] = v
 	}
 	return toDial

@@ -638,6 +638,8 @@ type P2PConfig struct { //nolint: maligned
 	RegionAware                     bool    `mapstructure:"region_aware"`
 	PercentPeersInSameRegion        float64 `mapstructure:"percent_peers_in_same_region"`
 	RegionQueriesPerPeerQueryPeriod int     `mapstructure:"region_queries_per_peer_query_period"`
+	GCPFilter                       bool    `mapstructure:"gcp_filter"`
+	PercentGCPPeers                 float64 `mapstructure:"percent_gcp_peers"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -665,6 +667,8 @@ func DefaultP2PConfig() *P2PConfig {
 		RegionAware:                     false,
 		PercentPeersInSameRegion:        DefaultPercentPeersInSameRegion,
 		RegionQueriesPerPeerQueryPeriod: DefaultRegionQueriesPerPeerQueryPeriod,
+		GCPFilter:                       false,
+		PercentGCPPeers:                 0.9,
 	}
 }
 

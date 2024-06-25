@@ -18,6 +18,7 @@ type knownAddress struct {
 	LastSuccess time.Time       `json:"last_success"`
 	LastBanTime time.Time       `json:"last_ban_time"`
 	Region      string          `json:"region"`
+	Org         string          `json:"org"`
 }
 
 func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {

@@ -305,8 +305,8 @@ func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok
 }
-func (book *AddrBookMock) GetAddressRegion(addr *NetAddress) (string, error) {
-	return "", nil
+func (book *AddrBookMock) GetAddressRegionAndOrg(addr *NetAddress) (string, string, error) {
+	return "", "", nil
 }
 func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
 	delete(book.Addrs, addr.String())

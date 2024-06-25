@@ -346,6 +346,9 @@ percent_peers_in_same_region = {{ .P2P.PercentPeersInSameRegion }}
 # E.g. The current peer query period is hard coded to 30 seconds. If our API rate limits us to 40 queries per minute,
 # then we can set this value to 20, preventing us from hitting the rate limit.
 region_queries_per_peer_query_period = {{ .P2P.RegionQueriesPerPeerQueryPeriod }}
+# GCP filter
+gcp_filter = {{ .P2P.GCPFilter }}
+percent_gcp_peers = {{ .P2P.PercentGCPPeers }}
 
 #######################################################
 ###          Mempool Configuration Option          ###
