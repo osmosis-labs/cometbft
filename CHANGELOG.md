@@ -3,7 +3,7 @@
 ## v0.37.4-v25-osmo-10
 
 * [#115](https://github.com/osmosis-labs/cometbft/pull/115) perf(p2p/secretconn): Buffer secret connection writes (#3346)
-
+* [#116](https://github.com/osmosis-labs/cometbft/pull/116) perf(blockstore)!: Cache more in blockstore, which speedsup the gossip routines (#3342)
 
 ## v0.37.4-v25-osmo-9
 
