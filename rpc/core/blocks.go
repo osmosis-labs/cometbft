@@ -161,7 +161,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
-	commit := env.BlockStore.LoadBlockCommit(height)
+	commit := env.BlockStore.LoadBlockCommit(height).Clone()
 	return ctypes.NewResultCommit(&header, commit, true), nil
 }
 
