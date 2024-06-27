@@ -91,11 +91,6 @@ func (_m *Mempool) ReapMaxTxs(max int) types.Txs {
 	return r0
 }
 
-// ResetUpdate provides a mock function with given fields:
-func (_m *Mempool) ResetUpdate() {
-	_m.Called()
-}
-
 // RemoveTxByKey provides a mock function with given fields: txKey
 func (_m *Mempool) RemoveTxByKey(txKey types.TxKey) error {
 	ret := _m.Called(txKey)

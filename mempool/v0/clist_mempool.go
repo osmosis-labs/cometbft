@@ -46,9 +46,8 @@ type CListMempool struct {
 	// Track whether we're rechecking txs.
 	// These are not protected by a mutex and are expected to be mutated in
 	// serial (ie. by abci responses which are called in serial).
-	recheckCursor  *clist.CElement // next expected response
-	recheckEnd     *clist.CElement // re-checking stops here
-	stopRechecking atomic.Bool
+	recheckCursor *clist.CElement // next expected response
+	recheckEnd    *clist.CElement // re-checking stops here
 
 	// Map for quick access to txs to record sender in CheckTx.
 	// txsMap: txKey -> CElement
@@ -139,11 +138,6 @@ func (mem *CListMempool) Lock() {
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) Unlock() {
 	mem.updateMtx.Unlock()
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) ResetUpdate() {
-	mem.stopRechecking.Store(true)
 }
 
 // Safe for concurrent use by multiple goroutines.
@@ -665,7 +659,6 @@ func (mem *CListMempool) Update(
 }
 
 func (mem *CListMempool) recheckTxs() {
-	mem.stopRechecking.Store(false)
 	if mem.Size() == 0 {
 		panic("recheckTxs is called, but the mempool is empty")
 	}
@@ -676,10 +669,6 @@ func (mem *CListMempool) recheckTxs() {
 	// Push txs to proxyAppConn
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		if mem.stopRechecking.Load() {
-			break
-		}
-
 		memTx := e.Value.(*mempoolTx)
 		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   memTx.tx,
@@ -687,7 +676,6 @@ func (mem *CListMempool) recheckTxs() {
 		})
 	}
 
-	mem.stopRechecking.Store(false)
 	mem.proxyAppConn.FlushAsync()
 }
 

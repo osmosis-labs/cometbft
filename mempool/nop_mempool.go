@@ -40,8 +40,6 @@ func (*NopMempool) Lock() {}
 // Unlock does nothing.
 func (*NopMempool) Unlock() {}
 
-func (*NopMempool) ResetUpdate() {}
-
 // Update does nothing.
 func (*NopMempool) Update(
 	int64,
