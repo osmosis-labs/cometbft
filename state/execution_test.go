@@ -50,7 +50,7 @@ func TestApplyBlock(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
 	mp.On("Unlock").Return()
-	mp.On("ResetUpdate").Return()
+	mp.On("PreUpdate").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
 		mock.Anything,
@@ -223,7 +223,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
 	mp.On("Unlock").Return()
-	mp.On("ResetUpdate").Return()
+	mp.On("PreUpdate").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
 		mock.Anything,
@@ -480,7 +480,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
 	mp.On("Unlock").Return()
-	mp.On("ResetUpdate").Return()
+	mp.On("PreUpdate").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
 		mock.Anything,
@@ -607,7 +607,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
 	mp.On("Unlock").Return()
-	mp.On("ResetUpdate").Return()
+	mp.On("PreUpdate").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
 		mock.Anything,

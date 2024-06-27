@@ -58,9 +58,9 @@ type Mempool interface {
 	// Unlock unlocks the mempool.
 	Unlock()
 
-	// Cancel's any ongoing mempool Update. Safe to call while Mempool is locked.
-	// As a consequence, the Lock'd thread is expected to terminate soon after this is called.
-	ResetUpdate()
+	// PreUpdate signals that a new update is coming, before acquiring the mempool lock.
+	// If the mempool is still rechecking at this point, it should be considered full.
+	PreUpdate()
 
 	// Update informs the mempool that the given txs were committed and can be
 	// discarded.
