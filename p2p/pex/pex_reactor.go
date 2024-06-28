@@ -476,21 +476,30 @@ func (r *Reactor) ensurePeers() {
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 
+	filter := func(ka *knownAddress) bool {
+		attempts, lastDialedTime := r.dialAttemptsInfo(ka.Addr)
+		if r.IsTooEarlyToDial(ka.Addr, attempts, lastDialedTime) {
+			return false
+		}
+		if r.IsMaxAttemptsToDial(ka.Addr, attempts) {
+			r.book.MarkBad(ka.Addr, defaultBanTime)
+			return false
+		}
+		if r.Switch.IsDialingOrExistingAddress(ka.Addr) {
+			return false
+		}
+		if _, selected := toDial[ka.Addr.ID]; selected {
+			return false
+		}
+		return true
+	}
+
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
-		try := r.book.PickAddress(newBias)
-		if try == nil {
+		prospectivePeer := r.book.PickAddress(newBias, filter)
+		if prospectivePeer == nil {
 			continue
 		}
-		if _, selected := toDial[try.ID]; selected {
-			continue
-		}
-		if r.Switch.IsDialingOrExistingAddress(try) {
-			continue
-		}
-		// TODO: consider moving some checks from toDial into here
-		// so we don't even consider dialing peers that we want to wait
-		// before dialing again, or have dialed too many times already
-		toDial[try.ID] = try
+		toDial[prospectivePeer.ID] = prospectivePeer
 	}
 
 	// Dial picked addresses
@@ -544,25 +553,9 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 }
 
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
-	attempts, lastDialed := r.dialAttemptsInfo(addr)
-	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
-		r.book.MarkBad(addr, defaultBanTime)
-		return errMaxAttemptsToDial{}
-	}
-
-	// exponential backoff if it's not our first attempt to dial given address
-	if attempts > 0 {
-		jitter := time.Duration(cmtrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
-		backoffDuration := jitter + ((1 << uint(attempts)) * time.Second)
-		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
-		sinceLastDialed := time.Since(lastDialed)
-		if sinceLastDialed < backoffDuration {
-			return errTooEarlyToDial{backoffDuration, lastDialed}
-		}
-	}
-
 	err := r.Switch.DialPeerWithAddress(addr)
 	if err != nil {
+		attempts, _ := r.dialAttemptsInfo(addr)
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
 		}
@@ -762,4 +755,25 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	default:
 		book.MarkAttempt(addr)
 	}
+}
+
+func (r *Reactor) IsTooEarlyToDial(addr *p2p.NetAddress, attempts int, lastDialedTime time.Time) bool {
+	if attempts > 0 {
+		jitter := time.Duration(cmtrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		backoffDuration := jitter + ((1 << uint(attempts)) * time.Second)
+		backoffDuration = r.maxBackoffDurationForPeer(addr, backoffDuration)
+		sinceLastDialed := time.Since(lastDialedTime)
+		if sinceLastDialed < backoffDuration {
+			r.Logger.Debug("Skipping peer due to backoff", "addr", addr, "backoffDuration", backoffDuration)
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Reactor) IsMaxAttemptsToDial(addr *p2p.NetAddress, attempts int) bool {
+	if !r.Switch.IsPeerPersistent(addr) && attempts > maxAttemptsToDial {
+		return true
+	}
+	return false
 }

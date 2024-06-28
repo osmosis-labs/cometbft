@@ -25,7 +25,7 @@ func Fuzz(data []byte) int {
 
 	// Also, make sure PickAddress always returns a non-nil address.
 	bias := rand.Intn(100) //nolint:gosec
-	if p := addrBook.PickAddress(bias); p == nil {
+	if p := addrBook.PickAddress(bias, nil); p == nil {
 		panic(fmt.Sprintf("picked a nil address (bias: %d, addrBook size: %v)",
 			bias, addrBook.Size()))
 	}
