@@ -473,8 +473,12 @@ func (r *Reactor) ensurePeers() {
 	newBias := cmtmath.MinInt(out, 8)*10 + 10
 
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
+	reserve := make(map[p2p.ID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
+
+	// Calculate reserve size as 20% of numToDial with a minimum of 10
+	reserveSize := cmtmath.MaxInt(numToDial/5, 10)
 
 	filter := func(ka *knownAddress) bool {
 		attempts, lastDialedTime := r.dialAttemptsInfo(ka.Addr)
@@ -491,6 +495,9 @@ func (r *Reactor) ensurePeers() {
 		if _, selected := toDial[ka.Addr.ID]; selected {
 			return false
 		}
+		if _, selected := reserve[ka.Addr.ID]; selected {
+			return false
+		}
 		return true
 	}
 
@@ -500,6 +507,15 @@ func (r *Reactor) ensurePeers() {
 			continue
 		}
 		toDial[prospectivePeer.ID] = prospectivePeer
+	}
+
+	// Add extra peers to the reserve
+	for i := 0; i < maxAttempts && len(reserve) < reserveSize; i++ {
+		prospectivePeer := r.book.PickAddress(newBias, filter)
+		if prospectivePeer == nil {
+			continue
+		}
+		reserve[prospectivePeer.ID] = prospectivePeer
 	}
 
 	// Dial picked addresses
@@ -512,6 +528,22 @@ func (r *Reactor) ensurePeers() {
 					r.Logger.Debug(err.Error(), "addr", addr)
 				default:
 					r.Logger.Debug(err.Error(), "addr", addr)
+				}
+				// Use a peer from the reserve if available
+				for _, reserveAddr := range reserve {
+					delete(reserve, reserveAddr.ID)
+					go func(reserveAddr *p2p.NetAddress) {
+						err := r.dialPeer(reserveAddr)
+						if err != nil {
+							switch err.(type) {
+							case errMaxAttemptsToDial, errTooEarlyToDial:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
+							default:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
+							}
+						}
+					}(reserveAddr)
+					break
 				}
 			}
 		}(addr)
