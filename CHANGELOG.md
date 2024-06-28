@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v0.37.4-v25-osmo-11
+
+* [#117](https://github.com/osmosis-labs/cometbft/pull/117) fix(mempool)!: stop accepting TXs in the mempool if we can't keep up
+* [#118](https://github.com/osmosis-labs/cometbft/pull/118) perf: bring back stop recheck
+
 ## v0.37.4-v25-osmo-10
 
 * [#115](https://github.com/osmosis-labs/cometbft/pull/115) perf(p2p/secretconn): Buffer secret connection writes (#3346)
