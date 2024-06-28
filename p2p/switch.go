@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"time"
 
@@ -158,6 +159,11 @@ func NewSwitch(
 		// If it does, replace it with the max
 		if cfg.PercentPeersInSameRegion > 0.9 {
 			cfg.PercentPeersInSameRegion = config.DefaultPercentPeersInSameRegion
+		}
+
+		err = fetchGCPIPRanges()
+		if err != nil {
+			panic(fmt.Sprintf("failed to fetch GCP IP ranges: %v", err))
 		}
 	}
 
@@ -980,4 +986,62 @@ func (sw *Switch) addPeer(p Peer) error {
 
 func (sw *Switch) GetConfig() *config.P2PConfig {
 	return sw.config
+}
+
+// Struct to hold the JSON data
+type GCPIPRanges struct {
+	Prefixes []struct {
+		IPv4Prefix string `json:"ipv4Prefix"`
+		IPv6Prefix string `json:"ipv6Prefix"`
+		Service    string `json:"service"`
+		Scope      string `json:"scope"`
+	} `json:"prefixes"`
+}
+
+var gcpIPRanges GCPIPRanges
+
+// Function to fetch and parse the JSON data
+func fetchGCPIPRanges() error {
+	resp, err := http.Get("https://www.gstatic.com/ipranges/cloud.json")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(body, &gcpIPRanges)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Function to check if an IP belongs to the GCP IP ranges
+func IsGCPIP(ip string) bool {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return false
+	}
+
+	for _, prefix := range gcpIPRanges.Prefixes {
+		if prefix.IPv4Prefix != "" {
+			_, ipNet, err := net.ParseCIDR(prefix.IPv4Prefix)
+			if err == nil && ipNet.Contains(parsedIP) {
+				return true
+			}
+		}
+		if prefix.IPv6Prefix != "" {
+			_, ipNet, err := net.ParseCIDR(prefix.IPv6Prefix)
+			if err == nil && ipNet.Contains(parsedIP) {
+				return true
+			}
+		}
+	}
+
+	return false
 }

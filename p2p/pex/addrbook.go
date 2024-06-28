@@ -361,7 +361,10 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 					ka.Region = region
 					a.addrLookup[ka.ID()] = ka
 				}
-				if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
+				// if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
+				// 	filteredBucket[addrStr] = ka
+				// }
+				if p2p.IsGCPIP(ka.Addr.IP.String()) {
 					filteredBucket[addrStr] = ka
 				}
 			}
