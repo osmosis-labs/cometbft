@@ -98,6 +98,7 @@ type addrBook struct {
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
+	gcpPeers   map[p2p.ID]*knownAddress // gcp peers
 	badPeers   map[p2p.ID]*knownAddress // blacklisted peers
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
@@ -132,6 +133,7 @@ func NewAddrBook(filePath string, routabilityStrict, isRegionTracking bool, regi
 		ourAddrs:                        make(map[string]struct{}),
 		privateIDs:                      make(map[p2p.ID]struct{}),
 		addrLookup:                      make(map[p2p.ID]*knownAddress),
+		gcpPeers:                        make(map[p2p.ID]*knownAddress),
 		badPeers:                        make(map[p2p.ID]*knownAddress),
 		filePath:                        filePath,
 		routabilityStrict:               routabilityStrict,
@@ -347,28 +349,45 @@ func (a *addrBook) pickAddressInternal(biasTowardsNewAddrs int, region string, m
 		}
 
 		if useRegion {
-			// Filter the bucket by region
-			filteredBucket := make(map[string]*knownAddress)
-			for addrStr, ka := range bucket {
-				// If the region is not set, we will attempt to get it from the IP address
-				// if we have not exceeded the region query limit for the current period.
-				if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
-					region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
-					a.curRegionQueryCount++
-					if err != nil {
-						return nil
+			// Pick a random entry in a.gcpPeers
+			fmt.Println("GCP peers", len(a.gcpPeers))
+			if len(a.gcpPeers) > 0 {
+				randIndex := a.rand.Intn(len(a.gcpPeers))
+				i := 0
+				for _, ka := range a.gcpPeers {
+					if randIndex == 0 {
+						return ka.Addr
 					}
-					ka.Region = region
-					a.addrLookup[ka.ID()] = ka
-				}
-				// if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
-				// 	filteredBucket[addrStr] = ka
-				// }
-				if p2p.IsGCPIP(ka.Addr.IP.String()) {
-					filteredBucket[addrStr] = ka
+					if i == randIndex {
+						return ka.Addr
+					}
+					i++
 				}
 			}
-			bucket = filteredBucket
+			fmt.Println("No gcp peers")
+
+			// // Filter the bucket by region
+			// filteredBucket := make(map[string]*knownAddress)
+			// for addrStr, ka := range bucket {
+			// 	// If the region is not set, we will attempt to get it from the IP address
+			// 	// if we have not exceeded the region query limit for the current period.
+			// 	if ka.Region == "" && a.curRegionQueryCount < a.regionQueriesPerPeerQueryPeriod {
+			// 		region, err := p2p.GetRegionFromIP(ka.Addr.IP.String())
+			// 		a.curRegionQueryCount++
+			// 		if err != nil {
+			// 			return nil
+			// 		}
+			// 		ka.Region = region
+			// 		a.addrLookup[ka.ID()] = ka
+			// 	}
+			// 	// if (matchRegion && ka.Region == region) || (!matchRegion && ka.Region != region && ka.Region != "") {
+			// 	// 	filteredBucket[addrStr] = ka
+			// 	// }
+			// 	if p2p.IsGCPIP(ka.Addr.IP.String()) {
+			// 		filteredBucket[addrStr] = ka
+			// 	}
+			// }
+			// bucket = filteredBucket
 		}
 
 		if len(bucket) > 0 {
@@ -648,6 +667,9 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) error {
 
 	// Add it to addrLookup
 	a.addrLookup[ka.ID()] = ka
+	if p2p.IsGCPIP(ka.Addr.IP.String()) {
+		a.gcpPeers[ka.ID()] = ka
+	}
 	return nil
 }
 
@@ -702,6 +724,7 @@ func (a *addrBook) removeFromBucket(ka *knownAddress, bucketType byte, bucketIdx
 			a.nOld--
 		}
 		delete(a.addrLookup, ka.ID())
+		delete(a.gcpPeers, ka.ID())
 	}
 }
 
@@ -717,6 +740,7 @@ func (a *addrBook) removeFromAllBuckets(ka *knownAddress) {
 		a.nOld--
 	}
 	delete(a.addrLookup, ka.ID())
+	delete(a.gcpPeers, ka.ID())
 }
 
 //----------------------------------------------------------
