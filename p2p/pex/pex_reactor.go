@@ -477,8 +477,8 @@ func (r *Reactor) ensurePeers() {
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 
-	// Calculate reserve size as 20% of numToDial with a minimum of 10
-	reserveSize := cmtmath.MaxInt(numToDial/5, 10)
+	// Calculate reserve size as 50% of numToDial with a minimum of 10
+	reserveSize := cmtmath.MaxInt(numToDial/2, 10)
 
 	filter := func(ka *knownAddress) bool {
 		attempts, lastDialedTime := r.dialAttemptsInfo(ka.Addr)
@@ -529,7 +529,8 @@ func (r *Reactor) ensurePeers() {
 				default:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				}
-				// Use a peer from the reserve if available
+				// If there was an error dialing the peer and we have reserve peers,
+				// try to dial one of them.
 				for id, reserveAddr := range reserve {
 					if reserveAddr != nil {
 						delete(reserve, id)
