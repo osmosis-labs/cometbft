@@ -624,7 +624,7 @@ func (r *Reactor) ensurePeers() {
 func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDialed time.Time) {
 	_attempts, ok := r.attemptsToDial.Load(addr.DialString())
 	if !ok {
-		return
+		return 0, time.Time{}
 	}
 	atd := _attempts.(_attemptsToDial)
 	return atd.number, atd.lastDialed
@@ -633,8 +633,8 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	err := r.Switch.DialPeerWithAddress(addr)
 	if err != nil {
-		attempts, _ := r.dialAttemptsInfo(addr)
-		fmt.Println("Dialing summary 2, addr, err, attempts: ", addr, err, attempts)
+		attempts, lastDialed := r.dialAttemptsInfo(addr)
+		fmt.Println("Dialing summary 2, addr, err, attempts, lastDialed: ", addr, err, attempts, lastDialed)
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
 		}
@@ -645,7 +645,9 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 			// NOTE: addr is removed from addrbook in markAddrInBookBasedOnErr
 			r.attemptsToDial.Delete(addr.DialString())
 		default:
-			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
+			newAttempts := attempts + 1
+			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{newAttempts, time.Now()})
+			fmt.Println("Updated attempts for addr: ", addr, newAttempts)
 		}
 		return fmt.Errorf("dialing failed (attempts: %d): %w", attempts+1, err)
 	}
