@@ -518,11 +518,17 @@ func (r *Reactor) ensurePeers() {
 		reserve[prospectivePeer.ID] = prospectivePeer
 	}
 
+	var (
+		successCount int
+		errorCount   int
+	)
+
 	// Dial picked addresses
 	for _, addr := range toDial {
 		go func(addr *p2p.NetAddress) {
 			err := r.dialPeer(addr)
 			if err != nil {
+				errorCount++
 				switch err.(type) {
 				case errMaxAttemptsToDial, errTooEarlyToDial:
 					r.Logger.Debug(err.Error(), "addr", addr)
@@ -537,20 +543,33 @@ func (r *Reactor) ensurePeers() {
 						go func(reserveAddr *p2p.NetAddress) {
 							err := r.dialPeer(reserveAddr)
 							if err != nil {
+								errorCount++
 								switch err.(type) {
 								case errMaxAttemptsToDial, errTooEarlyToDial:
 									r.Logger.Debug(err.Error(), "addr", reserveAddr)
 								default:
 									r.Logger.Debug(err.Error(), "addr", reserveAddr)
 								}
+							} else {
+								successCount++
 							}
 						}(reserveAddr)
 						break
 					}
 				}
+			} else {
+				successCount++
 			}
 		}(addr)
 	}
+
+	r.Logger.Info(
+		"Dialing summary",
+		"toDialCount", len(toDial),
+		"reserveCount", len(reserve),
+		"successCount", successCount,
+		"errorCount", errorCount,
+	)
 
 	if r.book.NeedMoreAddrs() {
 		// Check if banned nodes can be reinstated
