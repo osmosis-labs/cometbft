@@ -541,9 +541,9 @@ func (r *Reactor) ensurePeers() {
 			defer wg.Done()
 			err := r.dialPeer(addr)
 			mu.Lock()
-			defer mu.Unlock()
 			if err != nil {
 				errorCount++
+				mu.Unlock()
 				switch err.(type) {
 				case errMaxAttemptsToDial, errTooEarlyToDial:
 					r.Logger.Debug(err.Error(), "addr", addr)
@@ -559,9 +559,9 @@ func (r *Reactor) ensurePeers() {
 							defer wg.Done()
 							err := r.dialPeer(reserveAddr)
 							mu.Lock()
-							defer mu.Unlock()
 							if err != nil {
 								errorCount++
+								mu.Unlock()
 								switch err.(type) {
 								case errMaxAttemptsToDial, errTooEarlyToDial:
 									r.Logger.Debug(err.Error(), "addr", reserveAddr)
@@ -570,6 +570,7 @@ func (r *Reactor) ensurePeers() {
 								}
 							} else {
 								successCount++
+								mu.Unlock()
 							}
 						}(reserveAddr)
 						break
@@ -577,6 +578,7 @@ func (r *Reactor) ensurePeers() {
 				}
 			} else {
 				successCount++
+				mu.Unlock()
 			}
 		}(addr)
 	}
