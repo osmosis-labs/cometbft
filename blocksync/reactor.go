@@ -334,11 +334,11 @@ FOR_LOOP:
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 				}
-				// else {
-				// should only happen during testing
-				// }
+				// // else {
+				// // should only happen during testing
+				// // }
 
-				break FOR_LOOP
+				// break FOR_LOOP
 			}
 
 		case <-trySyncTicker.C: // chan time
