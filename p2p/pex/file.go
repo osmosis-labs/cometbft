@@ -108,7 +108,7 @@ func (a *addrBook) loadDialAttempts(filePath string, r *Reactor) bool {
 	// Restore .bucketsNew & .bucketsOld
 	for _, ka := range aJSON.Addrs {
 		// Populate attemptsToDial in Reactor
-		r.attemptsToDial.Store(ka.Addr.String(), _attemptsToDial{
+		r.attemptsToDial.Store(ka.Addr.DialString(), _attemptsToDial{
 			number:     int(ka.Attempts),
 			lastDialed: ka.LastAttempt,
 		})
