@@ -85,7 +85,8 @@ type BlockPool struct {
 	requestsCh chan<- BlockRequest
 	errorsCh   chan<- peerError
 
-	stopCh chan struct{}
+	stopCh                  chan struct{}
+	isRequestRoutineStopped bool
 }
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
@@ -98,8 +99,9 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 		height:      start,
 		startHeight: start,
 
-		requestsCh: requestsCh,
-		errorsCh:   errorsCh,
+		requestsCh:              requestsCh,
+		errorsCh:                errorsCh,
+		isRequestRoutineStopped: false,
 	}
 	bp.BaseService = *service.NewBaseService(nil, "BlockPool", bp)
 	return bp
@@ -110,19 +112,16 @@ func (pool *BlockPool) StopRequestersRoutine() {
 	case pool.stopCh <- struct{}{}:
 	default:
 	}
+	pool.isRequestRoutineStopped = true
 }
 
 func (pool *BlockPool) StartRequestersRoutine() {
 	go pool.makeRequestersRoutine()
+	pool.isRequestRoutineStopped = false
 }
 
 func (pool *BlockPool) IsBlockPoolStopped() bool {
-	select {
-	case <-pool.stopCh:
-		return true
-	default:
-		return false
-	}
+	return pool.isRequestRoutineStopped
 }
 
 // OnStart implements service.Service by spawning requesters routine and recording
