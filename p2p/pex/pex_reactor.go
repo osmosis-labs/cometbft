@@ -475,10 +475,11 @@ func (r *Reactor) ensurePeers() {
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
 	reserve := make(map[p2p.ID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
-	maxAttempts := numToDial * 3
+	maxToDialAttempts := numToDial * 3
 
 	// Calculate reserve size as 50% of numToDial with a minimum of 10
 	reserveSize := cmtmath.MaxInt(numToDial/2, 10)
+	maxReserveAttempts := reserveSize * 3
 
 	filter := func(ka *knownAddress) bool {
 		attempts, lastDialedTime := r.dialAttemptsInfo(ka.Addr)
@@ -510,7 +511,7 @@ func (r *Reactor) ensurePeers() {
 		wg              sync.WaitGroup
 	)
 
-	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
+	for i := 0; i < maxToDialAttempts && len(toDial) < numToDial; i++ {
 		toDialAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
@@ -520,7 +521,7 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	// Add extra peers to the reserve
-	for i := 0; i < maxAttempts && len(reserve) < reserveSize; i++ {
+	for i := 0; i < maxReserveAttempts && len(reserve) < reserveSize; i++ {
 		reserveAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
@@ -528,6 +529,9 @@ func (r *Reactor) ensurePeers() {
 		}
 		reserve[prospectivePeer.ID] = prospectivePeer
 	}
+
+	toDialCount := len(toDial)
+	reserveCount := len(reserve)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
@@ -582,8 +586,8 @@ func (r *Reactor) ensurePeers() {
 		wg.Wait()
 		r.Logger.Info(
 			"Dialing summary",
-			"toDialCount", len(toDial),
-			"reserveCount", len(reserve),
+			"toDialCount", toDialCount,
+			"reserveCount", reserveCount,
 			"successCount", successCount,
 			"errorCount", errorCount,
 			"toDialAttempts", toDialAttempts,
