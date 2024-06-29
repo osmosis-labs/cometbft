@@ -634,6 +634,7 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	err := r.Switch.DialPeerWithAddress(addr)
 	if err != nil {
 		attempts, _ := r.dialAttemptsInfo(addr)
+		fmt.Println("Dialing summary 2, addr, err, attempts: ", addr, err, attempts)
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
 		}
