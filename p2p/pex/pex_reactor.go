@@ -501,7 +501,17 @@ func (r *Reactor) ensurePeers() {
 		return true
 	}
 
+	var (
+		toDialAttempts  int
+		reserveAttempts int
+		successCount    int
+		errorCount      int
+		mu              sync.Mutex
+		wg              sync.WaitGroup
+	)
+
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
+		toDialAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
 			continue
@@ -511,19 +521,13 @@ func (r *Reactor) ensurePeers() {
 
 	// Add extra peers to the reserve
 	for i := 0; i < maxAttempts && len(reserve) < reserveSize; i++ {
+		reserveAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
 			continue
 		}
 		reserve[prospectivePeer.ID] = prospectivePeer
 	}
-
-	var (
-		successCount int
-		errorCount   int
-		mu           sync.Mutex
-		wg           sync.WaitGroup
-	)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
@@ -582,6 +586,8 @@ func (r *Reactor) ensurePeers() {
 			"reserveCount", len(reserve),
 			"successCount", successCount,
 			"errorCount", errorCount,
+			"toDialAttempts", toDialAttempts,
+			"reserveAttempts", reserveAttempts,
 		)
 	}()
 
