@@ -581,19 +581,17 @@ func (r *Reactor) ensurePeers() {
 		}(addr)
 	}
 
-	// Log the summary in a separate goroutine
-	go func() {
-		wg.Wait()
-		r.Logger.Info(
-			"Dialing summary",
-			"toDialCount", toDialCount,
-			"reserveCount", reserveCount,
-			"successCount", successCount,
-			"errorCount", errorCount,
-			"toDialAttempts", toDialAttempts,
-			"reserveAttempts", reserveAttempts,
-		)
-	}()
+	// Log the summary after all goroutines have finished
+	wg.Wait()
+	r.Logger.Info(
+		"Dialing summary",
+		"toDialCount", toDialCount,
+		"reserveCount", reserveCount,
+		"successCount", successCount,
+		"errorCount", errorCount,
+		"toDialAttempts", toDialAttempts,
+		"reserveAttempts", reserveAttempts,
+	)
 
 	if r.book.NeedMoreAddrs() {
 		// Check if banned nodes can be reinstated
@@ -830,6 +828,7 @@ func (r *Reactor) attemptDisconnects() {
 
 func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
+	// TODO, blacklist peer if fmt.Errorf("peer is on a different network. Got %v, expected %v", other.Network, info.Network)
 	switch err.(type) {
 	case p2p.ErrSwitchAuthenticationFailure:
 		book.MarkBad(addr, defaultBanTime)
