@@ -554,6 +554,7 @@ func (r *Reactor) ensurePeers() {
 						}
 					} else {
 						successCount++
+						break
 					}
 				}
 			}
