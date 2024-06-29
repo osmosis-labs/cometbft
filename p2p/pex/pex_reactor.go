@@ -550,25 +550,21 @@ func (r *Reactor) ensurePeers() {
 				for id, reserveAddr := range reserve {
 					if reserveAddr != nil {
 						delete(reserve, id)
-						wg.Add(1)
-						go func(reserveAddr *p2p.NetAddress) {
-							defer wg.Done()
-							err := r.dialPeer(reserveAddr)
-							mu.Lock()
-							if err != nil {
-								errorCount++
-								mu.Unlock()
-								switch err.(type) {
-								case errMaxAttemptsToDial, errTooEarlyToDial:
-									r.Logger.Debug(err.Error(), "addr", reserveAddr)
-								default:
-									r.Logger.Debug(err.Error(), "addr", reserveAddr)
-								}
-							} else {
-								successCount++
-								mu.Unlock()
+						err := r.dialPeer(reserveAddr)
+						mu.Lock()
+						if err != nil {
+							errorCount++
+							mu.Unlock()
+							switch err.(type) {
+							case errMaxAttemptsToDial, errTooEarlyToDial:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
+							default:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
 							}
-						}(reserveAddr)
+						} else {
+							successCount++
+							mu.Unlock()
+						}
 						break
 					}
 				}
