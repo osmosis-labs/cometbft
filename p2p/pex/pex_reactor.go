@@ -626,12 +626,8 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	err := r.Switch.DialPeerWithAddress(addr)
-	if err == nil {
-		fmt.Println("Dialing summary 2 success, addr", addr)
-	}
 	if err != nil {
-		attempts, lastDialed := r.dialAttemptsInfo(addr)
-		fmt.Println("Dialing summary 2 fail, addr, err, attempts, lastDialed: ", addr, err, attempts, lastDialed)
+		attempts, _ := r.dialAttemptsInfo(addr)
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
 		}
@@ -644,7 +640,6 @@ func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 		default:
 			newAttempts := attempts + 1
 			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{newAttempts, time.Now()})
-			fmt.Println("Updated attempts for addr: ", addr, newAttempts)
 		}
 		return fmt.Errorf("dialing failed (attempts: %d): %w", attempts+1, err)
 	}
