@@ -81,3 +81,38 @@ func (a *addrBook) loadFromFile(filePath string) bool {
 	}
 	return true
 }
+
+func (a *addrBook) loadDialAttempts(filePath string, r *Reactor) bool {
+	// If doesn't exist, do nothing.
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	// Load addrBookJSON{}
+	addrBook, err := os.Open(filePath)
+	if err != nil {
+		panic(fmt.Sprintf("Error opening file %s: %v", filePath, err))
+	}
+	defer addrBook.Close()
+	aJSON := &addrBookJSON{}
+	dec := json.NewDecoder(addrBook)
+	err = dec.Decode(aJSON)
+	if err != nil {
+		panic(fmt.Sprintf("Error reading file %s: %v", filePath, err))
+	}
+
+	// Restore all the fields...
+	// Restore the key
+	a.key = aJSON.Key
+	// Restore .bucketsNew & .bucketsOld
+	for _, ka := range aJSON.Addrs {
+		// Populate attemptsToDial in Reactor
+		r.attemptsToDial.Store(ka.Addr.String(), _attemptsToDial{
+			number:     int(ka.Attempts),
+			lastDialed: ka.LastAttempt,
+		})
+	}
+
+	return true
+}
