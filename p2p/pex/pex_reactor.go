@@ -547,9 +547,11 @@ func (r *Reactor) ensurePeers() {
 					r.Logger.Debug(err.Error(), "addr", addr)
 				}
 				// If there was an error dialing the peer, try to dial reserve peers
+				mu.Lock()
 				for id, reserveAddr := range reserve {
 					if reserveAddr != nil {
 						delete(reserve, id)
+						mu.Unlock()
 						err := r.dialPeer(reserveAddr)
 						mu.Lock()
 						if err != nil {
@@ -568,6 +570,7 @@ func (r *Reactor) ensurePeers() {
 						break
 					}
 				}
+				mu.Unlock()
 			} else {
 				successCount++
 				mu.Unlock()
