@@ -34,6 +34,7 @@ type consensusReactor interface {
 	// for when we switch from blockchain reactor and block sync to
 	// the consensus machine
 	SwitchToConsensus(state sm.State, skipWAL bool)
+	OnStop()
 }
 
 type peerError struct {
@@ -324,16 +325,31 @@ FOR_LOOP:
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "outbound", outbound, "inbound", inbound, "lastHeight", state.LastBlockHeight)
 
+			if bcR.pool.IsBlockPoolStopped() {
+				fmt.Println("TICKING BLOCKPOOL STOPPED")
+				// Already switched to consensus, but still checking
+				isCaughtUp, _, _ := bcR.pool.IsCaughtUp()
+				if !isCaughtUp {
+					conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+					if ok {
+						conR.OnStop()
+					}
+					bcR.pool.StartRequestersRoutine()
+				} else {
+					fmt.Println("TICKING BLOCKPOOL STOPPED AND CAUGHT UP")
+				}
+				continue
+			}
+
 			if isCaughtUp, height, _ := bcR.pool.IsCaughtUp(); isCaughtUp {
 				fmt.Println("TICKING IS CAUGHT UP")
-				if !bcR.pool.IsRunning() {
-					// Already switched to consensus, but still checking
-					continue
-				}
+
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
-				if err := bcR.pool.Stop(); err != nil {
-					bcR.Logger.Error("Error stopping pool", "err", err)
-				}
+				// if err := bcR.pool.Stop(); err != nil {
+				// 	bcR.Logger.Error("Error stopping pool", "err", err)
+				// }
+				bcR.pool.StopRequestersRoutine()
+
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
