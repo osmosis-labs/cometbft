@@ -157,8 +157,6 @@ func (r *Reactor) OnStart() error {
 
 	r.seedAddrs = seedAddrs
 
-	r.book.LoadDialAttempts(r)
-
 	// Check if this node should run
 	// in seed/crawler mode
 	if r.config.SeedMode {
@@ -830,7 +828,6 @@ func (r *Reactor) attemptDisconnects() {
 func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 	// TODO: detect more "bad peer" scenarios
 	// TODO, blacklist peer if fmt.Errorf("peer is on a different network. Got %v, expected %v", other.Network, info.Network)
-	// TODO, connect: no route to host block
 	switch err.(type) {
 	case p2p.ErrSwitchAuthenticationFailure:
 		book.MarkBad(addr, defaultBanTime)

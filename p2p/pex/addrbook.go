@@ -79,8 +79,6 @@ type AddrBook interface {
 
 	// Persist to disk
 	Save()
-
-	LoadDialAttempts(*Reactor) bool
 }
 
 var _ AddrBook = (*addrBook)(nil)
@@ -957,11 +955,4 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 	}
 	hasher.Write(b)
 	return hasher.Sum(nil), nil
-}
-
-func (a *addrBook) LoadDialAttempts(r *Reactor) bool {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	return a.loadDialAttempts(a.filePath, r)
 }
