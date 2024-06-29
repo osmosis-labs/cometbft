@@ -527,50 +527,67 @@ func (r *Reactor) ensurePeers() {
 	toDialCount := len(toDial)
 	reserveCount := len(reserve)
 
-	// TODO add back concurrency?
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
 	// Dial picked addresses
 	for _, addr := range toDial {
-		err := r.dialPeer(addr)
-		if err != nil {
-			errorCount++
-			switch err.(type) {
-			case errMaxAttemptsToDial, errTooEarlyToDial:
-				r.Logger.Debug(err.Error(), "addr", addr)
-			default:
-				r.Logger.Debug(err.Error(), "addr", addr)
-			}
-			// Attempt to dial reserve peers if there was an error
-			for id, reserveAddr := range reserve {
-				if reserveAddr != nil {
-					delete(reserve, id) // Remove from reserve
-					err := r.dialPeer(reserveAddr)
-					if err != nil {
-						errorCount++
-						switch err.(type) {
-						case errMaxAttemptsToDial, errTooEarlyToDial:
-							r.Logger.Debug(err.Error(), "addr", reserveAddr)
-						default:
-							r.Logger.Debug(err.Error(), "addr", reserveAddr)
+		wg.Add(1)
+		go func(addr *p2p.NetAddress) {
+			defer wg.Done()
+			err := r.dialPeer(addr)
+			if err != nil {
+				mu.Lock()
+				errorCount++
+				mu.Unlock()
+				switch err.(type) {
+				case errMaxAttemptsToDial, errTooEarlyToDial:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				default:
+					r.Logger.Debug(err.Error(), "addr", addr)
+				}
+				// Attempt to dial reserve peers if there was an error
+				mu.Lock()
+				for id, reserveAddr := range reserve {
+					if reserveAddr != nil {
+						delete(reserve, id) // Remove from reserve
+						mu.Unlock()         // Unlock before dialing
+						err := r.dialPeer(reserveAddr)
+						mu.Lock() // Re-lock after dialing
+						if err != nil {
+							errorCount++
+							switch err.(type) {
+							case errMaxAttemptsToDial, errTooEarlyToDial:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
+							default:
+								r.Logger.Debug(err.Error(), "addr", reserveAddr)
+							}
+						} else {
+							successCount++
+							break
 						}
-					} else {
-						successCount++
-						break
 					}
 				}
+				mu.Unlock()
+			} else {
+				mu.Lock()
+				successCount++
+				mu.Unlock()
 			}
-		} else {
-			successCount++
-		}
+		}(addr)
 	}
 
-	// Log the summary
-	r.Logger.Info(
-		"Dialing summary",
-		"toDialCount", toDialCount,
-		"reserveCount", reserveCount,
-		"successCount", successCount,
-		"errorCount", errorCount,
-	)
+	// Log the summary in a separate goroutine
+	go func() {
+		wg.Wait()
+		r.Logger.Info(
+			"Dialing summary",
+			"toDialCount", toDialCount,
+			"reserveCount", reserveCount,
+			"successCount", successCount,
+			"errorCount", errorCount,
+		)
+	}()
 
 	if r.book.NeedMoreAddrs() {
 		// Check if banned nodes can be reinstated
