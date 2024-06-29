@@ -507,8 +507,6 @@ func (r *Reactor) ensurePeers() {
 		reserveAttempts int
 		successCount    int
 		errorCount      int
-		mu              sync.Mutex
-		wg              sync.WaitGroup
 	)
 
 	for i := 0; i < maxToDialAttempts && len(toDial) < numToDial; i++ {
@@ -535,54 +533,41 @@ func (r *Reactor) ensurePeers() {
 
 	// Dial picked addresses
 	for _, addr := range toDial {
-		wg.Add(1)
-		go func(addr *p2p.NetAddress) {
-			defer wg.Done()
-			err := r.dialPeer(addr)
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				errorCount++
-				switch err.(type) {
-				case errMaxAttemptsToDial, errTooEarlyToDial:
-					r.Logger.Debug(err.Error(), "addr", addr)
-				default:
-					r.Logger.Debug(err.Error(), "addr", addr)
-				}
-				// If there was an error dialing the peer and we have reserve peers,
-				// try to dial one of them.
-				for id, reserveAddr := range reserve {
-					if reserveAddr != nil {
-						delete(reserve, id)
-						wg.Add(1)
-						go func(reserveAddr *p2p.NetAddress) {
-							defer wg.Done()
-							err := r.dialPeer(reserveAddr)
-							mu.Lock()
-							defer mu.Unlock()
-							if err != nil {
-								errorCount++
-								switch err.(type) {
-								case errMaxAttemptsToDial, errTooEarlyToDial:
-									r.Logger.Debug(err.Error(), "addr", reserveAddr)
-								default:
-									r.Logger.Debug(err.Error(), "addr", reserveAddr)
-								}
-							} else {
-								successCount++
-							}
-						}(reserveAddr)
-						break
-					}
-				}
-			} else {
-				successCount++
+		err := r.dialPeer(addr)
+		if err != nil {
+			errorCount++
+			switch err.(type) {
+			case errMaxAttemptsToDial, errTooEarlyToDial:
+				r.Logger.Debug(err.Error(), "addr", addr)
+			default:
+				r.Logger.Debug(err.Error(), "addr", addr)
 			}
-		}(addr)
+			// If there was an error dialing the peer and we have reserve peers,
+			// try to dial one of them.
+			for id, reserveAddr := range reserve {
+				if reserveAddr != nil {
+					delete(reserve, id)
+					err := r.dialPeer(reserveAddr)
+					if err != nil {
+						errorCount++
+						switch err.(type) {
+						case errMaxAttemptsToDial, errTooEarlyToDial:
+							r.Logger.Debug(err.Error(), "addr", reserveAddr)
+						default:
+							r.Logger.Debug(err.Error(), "addr", reserveAddr)
+						}
+					} else {
+						successCount++
+					}
+					break
+				}
+			}
+		} else {
+			successCount++
+		}
 	}
 
-	// Log the summary after all goroutines have finished
-	wg.Wait()
+	// Log the summary
 	r.Logger.Info(
 		"Dialing summary",
 		"toDialCount", toDialCount,
