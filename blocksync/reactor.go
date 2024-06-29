@@ -326,6 +326,10 @@ FOR_LOOP:
 
 			if isCaughtUp, height, _ := bcR.pool.IsCaughtUp(); isCaughtUp {
 				fmt.Println("TICKING IS CAUGHT UP")
+				if !bcR.pool.IsRunning() {
+					// Already switched to consensus, but still checking
+					continue
+				}
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				if err := bcR.pool.Stop(); err != nil {
 					bcR.Logger.Error("Error stopping pool", "err", err)
