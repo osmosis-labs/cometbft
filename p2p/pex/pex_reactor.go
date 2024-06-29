@@ -537,26 +537,24 @@ func (r *Reactor) ensurePeers() {
 			defer wg.Done()
 			err := r.dialPeer(addr)
 			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
 				errorCount++
-				mu.Unlock()
 				switch err.(type) {
 				case errMaxAttemptsToDial, errTooEarlyToDial:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				default:
 					r.Logger.Debug(err.Error(), "addr", addr)
 				}
-				// If there was an error dialing the peer, try to dial reserve peers
-				mu.Lock()
+				// Attempt to dial reserve peers if there was an error
 				for id, reserveAddr := range reserve {
 					if reserveAddr != nil {
-						delete(reserve, id)
-						mu.Unlock()
+						delete(reserve, id) // Remove from reserve under lock
+						mu.Unlock()         // Unlock before dialing
 						err := r.dialPeer(reserveAddr)
-						mu.Lock()
+						mu.Lock() // Re-lock after dialing
 						if err != nil {
 							errorCount++
-							mu.Unlock()
 							switch err.(type) {
 							case errMaxAttemptsToDial, errTooEarlyToDial:
 								r.Logger.Debug(err.Error(), "addr", reserveAddr)
@@ -565,15 +563,12 @@ func (r *Reactor) ensurePeers() {
 							}
 						} else {
 							successCount++
-							mu.Unlock()
 						}
 						break
 					}
 				}
-				mu.Unlock()
 			} else {
 				successCount++
-				mu.Unlock()
 			}
 		}(addr)
 	}
