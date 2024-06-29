@@ -522,11 +522,14 @@ func (r *Reactor) ensurePeers() {
 		successCount int
 		errorCount   int
 		mu           sync.Mutex
+		wg           sync.WaitGroup
 	)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
+		wg.Add(1)
 		go func(addr *p2p.NetAddress) {
+			defer wg.Done()
 			err := r.dialPeer(addr)
 			mu.Lock()
 			defer mu.Unlock()
@@ -543,7 +546,9 @@ func (r *Reactor) ensurePeers() {
 				for id, reserveAddr := range reserve {
 					if reserveAddr != nil {
 						delete(reserve, id)
+						wg.Add(1)
 						go func(reserveAddr *p2p.NetAddress) {
+							defer wg.Done()
 							err := r.dialPeer(reserveAddr)
 							mu.Lock()
 							defer mu.Unlock()
@@ -568,13 +573,17 @@ func (r *Reactor) ensurePeers() {
 		}(addr)
 	}
 
-	r.Logger.Info(
-		"Dialing summary",
-		"toDialCount", len(toDial),
-		"reserveCount", len(reserve),
-		"successCount", successCount,
-		"errorCount", errorCount,
-	)
+	// Log the summary in a separate goroutine
+	go func() {
+		wg.Wait()
+		r.Logger.Info(
+			"Dialing summary",
+			"toDialCount", len(toDial),
+			"reserveCount", len(reserve),
+			"successCount", successCount,
+			"errorCount", errorCount,
+		)
+	}()
 
 	if r.book.NeedMoreAddrs() {
 		// Check if banned nodes can be reinstated
