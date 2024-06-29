@@ -320,10 +320,12 @@ FOR_LOOP:
 	for {
 		select {
 		case <-switchToConsensusTicker.C:
+			fmt.Println("TICKING SWITCH TO CONS")
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "outbound", outbound, "inbound", inbound, "lastHeight", state.LastBlockHeight)
 
 			if isCaughtUp, height, _ := bcR.pool.IsCaughtUp(); isCaughtUp {
+				fmt.Println("TICKING IS CAUGHT UP")
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				if err := bcR.pool.Stop(); err != nil {
 					bcR.Logger.Error("Error stopping pool", "err", err)
