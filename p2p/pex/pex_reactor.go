@@ -503,14 +503,11 @@ func (r *Reactor) ensurePeers() {
 	}
 
 	var (
-		toDialAttempts  int
-		reserveAttempts int
-		successCount    int
-		errorCount      int
+		successCount int
+		errorCount   int
 	)
 
 	for i := 0; i < maxToDialAttempts && len(toDial) < numToDial; i++ {
-		toDialAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
 			continue
@@ -520,7 +517,6 @@ func (r *Reactor) ensurePeers() {
 
 	// Add extra peers to the reserve
 	for i := 0; i < maxReserveAttempts && len(reserve) < reserveSize; i++ {
-		reserveAttempts++
 		prospectivePeer := r.book.PickAddress(newBias, filter)
 		if prospectivePeer == nil {
 			continue
@@ -592,8 +588,6 @@ func (r *Reactor) ensurePeers() {
 			"reserveCount", reserveCount,
 			"successCount", successCount,
 			"errorCount", errorCount,
-			"toDialAttempts", toDialAttempts,
-			"reserveAttempts", reserveAttempts,
 		)
 	}()
 
@@ -634,9 +628,12 @@ func (r *Reactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDial
 
 func (r *Reactor) dialPeer(addr *p2p.NetAddress) error {
 	err := r.Switch.DialPeerWithAddress(addr)
+	if err == nil {
+		fmt.Println("Dialing summary 2 success, addr", addr)
+	}
 	if err != nil {
 		attempts, lastDialed := r.dialAttemptsInfo(addr)
-		fmt.Println("Dialing summary 2, addr, err, attempts, lastDialed: ", addr, err, attempts, lastDialed)
+		fmt.Println("Dialing summary 2 fail, addr, err, attempts, lastDialed: ", addr, err, attempts, lastDialed)
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return err
 		}
