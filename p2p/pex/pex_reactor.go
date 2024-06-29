@@ -542,8 +542,7 @@ func (r *Reactor) ensurePeers() {
 			default:
 				r.Logger.Debug(err.Error(), "addr", addr)
 			}
-			// If there was an error dialing the peer and we have reserve peers,
-			// try to dial one of them.
+			// If there was an error dialing the peer, try to dial reserve peers
 			for id, reserveAddr := range reserve {
 				if reserveAddr != nil {
 					delete(reserve, id)
@@ -558,8 +557,8 @@ func (r *Reactor) ensurePeers() {
 						}
 					} else {
 						successCount++
+						break
 					}
-					break
 				}
 			}
 		} else {
