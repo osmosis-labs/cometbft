@@ -521,12 +521,15 @@ func (r *Reactor) ensurePeers() {
 	var (
 		successCount int
 		errorCount   int
+		mu           sync.Mutex
 	)
 
 	// Dial picked addresses
 	for _, addr := range toDial {
 		go func(addr *p2p.NetAddress) {
 			err := r.dialPeer(addr)
+			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
 				errorCount++
 				switch err.(type) {
@@ -542,6 +545,8 @@ func (r *Reactor) ensurePeers() {
 						delete(reserve, id)
 						go func(reserveAddr *p2p.NetAddress) {
 							err := r.dialPeer(reserveAddr)
+							mu.Lock()
+							defer mu.Unlock()
 							if err != nil {
 								errorCount++
 								switch err.(type) {
