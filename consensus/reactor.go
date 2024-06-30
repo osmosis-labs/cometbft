@@ -97,7 +97,15 @@ func (conR *Reactor) OnStart() error {
 
 	go conR.falloutReactor()
 
+	go conR.countAndSleep()
+
 	return nil
+}
+
+func (conR *Reactor) countAndSleep() {
+	time.Sleep(30 * time.Second)
+	conR.Logger.Info("Counted to 30 seconds, now sleeping for 30 seconds")
+	time.Sleep(30 * time.Second)
 }
 
 // OnStop implements BaseService by unsubscribing from events and stopping
