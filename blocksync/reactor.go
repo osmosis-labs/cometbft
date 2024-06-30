@@ -334,7 +334,7 @@ FOR_LOOP:
 					if ok {
 						conR.OnStop()
 					}
-					bcR.pool.StartRequestersRoutine()
+					bcR.pool.OnStart()
 				} else {
 					fmt.Println("TICKING BLOCKPOOL STOPPED AND CAUGHT UP")
 				}
