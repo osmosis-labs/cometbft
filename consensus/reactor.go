@@ -51,6 +51,12 @@ type Reactor struct {
 	Metrics *Metrics
 }
 
+type blocksyncReactor interface {
+	// for when we switch from blockchain reactor and block sync to
+	// the consensus machine
+	SwitchToBlockSync(state sm.State) error
+}
+
 type ReactorOption func(*Reactor)
 
 // NewReactor returns a new Reactor with the given
@@ -88,6 +94,8 @@ func (conR *Reactor) OnStart() error {
 			return err
 		}
 	}
+
+	go conR.falloutReactor()
 
 	return nil
 }
@@ -970,6 +978,46 @@ func (conR *Reactor) peerStatsRoutine() {
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
 					conR.Switch.MarkPeerAsGood(peer)
+				}
+			}
+		case <-conR.conS.Quit():
+			return
+
+		case <-conR.Quit():
+			return
+		}
+	}
+}
+
+func (conR *Reactor) falloutReactor() {
+	fmt.Println("CONR falloutReactor")
+	for {
+		if !conR.IsRunning() {
+			conR.Logger.Info("Stopping peerStatsRoutine")
+			return
+		}
+
+		select {
+		case msg := <-conR.conS.statsMsgQueue:
+			// Get peer
+			peer := conR.Switch.Peers().Get(msg.PeerID)
+			if peer == nil {
+				conR.Logger.Debug("Attempt to update stats for non-existent peer",
+					"peer", msg.PeerID)
+				continue
+			}
+			// Get peer state
+			ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
+			if !ok {
+				panic(fmt.Sprintf("Peer %v has no state", peer))
+			}
+
+			fmt.Println("CONR falloutReactor msg height", ps.PRS.Height)
+			if ps.PRS.Height > conR.conS.blockStore.Height()+3 {
+				bcR, ok := conR.Switch.Reactor("BLOCKCHAIN").(blocksyncReactor)
+				if ok {
+					conR.conS.Stop()
+					bcR.SwitchToBlockSync(conR.conS.state)
 				}
 			}
 		case <-conR.conS.Quit():
