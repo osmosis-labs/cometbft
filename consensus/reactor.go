@@ -1012,14 +1012,16 @@ func (conR *Reactor) falloutReactor() {
 				panic(fmt.Sprintf("Peer %v has no state", peer))
 			}
 
-			fmt.Println("CONR falloutReactor msg height", ps.PRS.Height)
-			if ps.PRS.Height > conR.conS.blockStore.Height()+3 {
+			fmt.Println("CONR falloutReactor msg height", ps.PRS.Height, conR.conS.blockStore.Height())
+			if ps.PRS.Height > conR.conS.blockStore.Height()+5 {
 				bcR, ok := conR.Switch.Reactor("BLOCKCHAIN").(blocksyncReactor)
 				if ok {
 					conR.conS.Stop()
 					bcR.SwitchToBlockSync(conR.conS.state)
+					conR.Stop()
 					break
 				}
+				fmt.Println("CONR falloutReactor bcR not found")
 			}
 		case <-conR.conS.Quit():
 			return

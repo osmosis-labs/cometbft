@@ -136,6 +136,7 @@ func (bcR *Reactor) OnStart() error {
 
 // SwitchToBlockSync is called by the state sync reactor when switching to block sync.
 func (bcR *Reactor) SwitchToBlockSync(state sm.State) error {
+	fmt.Println("SwitchToBlockSync")
 	bcR.blockSync = true
 	bcR.initialState = state
 
