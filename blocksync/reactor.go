@@ -359,7 +359,7 @@ FOR_LOOP:
 					select {
 					case <-didProcessCh:
 					default:
-						return
+						continue
 					}
 				}
 
