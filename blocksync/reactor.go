@@ -354,6 +354,15 @@ FOR_LOOP:
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 				}
+
+				for {
+					select {
+					case <-didProcessCh:
+					default:
+						return
+					}
+				}
+
 				// // else {
 				// // should only happen during testing
 				// // }
