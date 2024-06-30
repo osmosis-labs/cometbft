@@ -326,10 +326,10 @@ FOR_LOOP:
 			bcR.Logger.Debug("Consensus ticker", "outbound", outbound, "inbound", inbound, "lastHeight", state.LastBlockHeight)
 
 			if bcR.pool.IsBlockPoolStopped() {
-				fmt.Println("TICKING BLOCKPOOL STOPPED")
 				// Already switched to consensus, but still checking
 				isCaughtUp, _, _ := bcR.pool.IsCaughtUp()
 				if !isCaughtUp {
+					fmt.Println("TICKING BLOCKPOOL STOPPED NOT CAUGHT UP, SWITCHING TO BLOCKSYNC")
 					conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 					if ok {
 						conR.OnStop()

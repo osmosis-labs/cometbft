@@ -89,6 +89,11 @@ func (conR *Reactor) OnStart() error {
 		}
 	}
 
+	// After 3 minutes, sleep for 2 minutes
+	time.AfterFunc(3*time.Minute, func() {
+		time.Sleep(2 * time.Minute)
+	})
+
 	return nil
 }
 
