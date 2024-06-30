@@ -1018,6 +1018,7 @@ func (conR *Reactor) falloutReactor() {
 				if ok {
 					conR.conS.Stop()
 					bcR.SwitchToBlockSync(conR.conS.state)
+					break
 				}
 			}
 		case <-conR.conS.Quit():
