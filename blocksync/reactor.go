@@ -338,7 +338,7 @@ FOR_LOOP:
 				} else {
 					fmt.Println("TICKING BLOCKPOOL STOPPED AND CAUGHT UP")
 				}
-				continue
+				continue FOR_LOOP
 			}
 
 			if isCaughtUp, height, _ := bcR.pool.IsCaughtUp(); isCaughtUp {
@@ -359,7 +359,7 @@ FOR_LOOP:
 					select {
 					case <-didProcessCh:
 					default:
-						continue
+						continue FOR_LOOP
 					}
 				}
 
