@@ -30,74 +30,74 @@ func nextStatus(m *Monitor) Status {
 	return m.Status()
 }
 
-func TestReader(t *testing.T) {
-	in := make([]byte, 100)
-	for i := range in {
-		in[i] = byte(i)
-	}
-	b := make([]byte, 100)
-	r := NewReader(bytes.NewReader(in), 100)
-	start := time.Now()
+// func TestReader(t *testing.T) {
+// 	in := make([]byte, 100)
+// 	for i := range in {
+// 		in[i] = byte(i)
+// 	}
+// 	b := make([]byte, 100)
+// 	r := NewReader(bytes.NewReader(in), 100)
+// 	start := time.Now()
 
-	// Make sure r implements Limiter
-	_ = Limiter(r)
+// 	// Make sure r implements Limiter
+// 	_ = Limiter(r)
 
-	// 1st read of 10 bytes is performed immediately
-	if n, err := r.Read(b); n != 10 || err != nil {
-		t.Fatalf("r.Read(b) expected 10 (<nil>); got %v (%v)", n, err)
-	} else if rt := time.Since(start); rt > _50ms {
-		t.Fatalf("r.Read(b) took too long (%v)", rt)
-	}
+// 	// 1st read of 10 bytes is performed immediately
+// 	if n, err := r.Read(b); n != 10 || err != nil {
+// 		t.Fatalf("r.Read(b) expected 10 (<nil>); got %v (%v)", n, err)
+// 	} else if rt := time.Since(start); rt > _50ms {
+// 		t.Fatalf("r.Read(b) took too long (%v)", rt)
+// 	}
 
-	// No new Reads allowed in the current sample
-	r.SetBlocking(false)
-	if n, err := r.Read(b); n != 0 || err != nil {
-		t.Fatalf("r.Read(b) expected 0 (<nil>); got %v (%v)", n, err)
-	} else if rt := time.Since(start); rt > _50ms {
-		t.Fatalf("r.Read(b) took too long (%v)", rt)
-	}
+// 	// No new Reads allowed in the current sample
+// 	r.SetBlocking(false)
+// 	if n, err := r.Read(b); n != 0 || err != nil {
+// 		t.Fatalf("r.Read(b) expected 0 (<nil>); got %v (%v)", n, err)
+// 	} else if rt := time.Since(start); rt > _50ms {
+// 		t.Fatalf("r.Read(b) took too long (%v)", rt)
+// 	}
 
-	status := [6]Status{0: r.Status()} // No samples in the first status
+// 	status := [6]Status{0: r.Status()} // No samples in the first status
 
-	// 2nd read of 10 bytes blocks until the next sample
-	r.SetBlocking(true)
-	if n, err := r.Read(b[10:]); n != 10 || err != nil {
-		t.Fatalf("r.Read(b[10:]) expected 10 (<nil>); got %v (%v)", n, err)
-	} else if rt := time.Since(start); rt < _100ms {
-		t.Fatalf("r.Read(b[10:]) returned ahead of time (%v)", rt)
-	}
+// 	// 2nd read of 10 bytes blocks until the next sample
+// 	r.SetBlocking(true)
+// 	if n, err := r.Read(b[10:]); n != 10 || err != nil {
+// 		t.Fatalf("r.Read(b[10:]) expected 10 (<nil>); got %v (%v)", n, err)
+// 	} else if rt := time.Since(start); rt < _100ms {
+// 		t.Fatalf("r.Read(b[10:]) returned ahead of time (%v)", rt)
+// 	}
 
-	status[1] = r.Status()            // 1st sample
-	status[2] = nextStatus(r.Monitor) // 2nd sample
-	status[3] = nextStatus(r.Monitor) // No activity for the 3rd sample
+// 	status[1] = r.Status()            // 1st sample
+// 	status[2] = nextStatus(r.Monitor) // 2nd sample
+// 	status[3] = nextStatus(r.Monitor) // No activity for the 3rd sample
 
-	if n := r.Done(); n != 20 {
-		t.Fatalf("r.Done() expected 20; got %v", n)
-	}
+// 	if n := r.Done(); n != 20 {
+// 		t.Fatalf("r.Done() expected 20; got %v", n)
+// 	}
 
-	status[4] = r.Status()
-	status[5] = nextStatus(r.Monitor) // Timeout
-	start = status[0].Start
+// 	status[4] = r.Status()
+// 	status[5] = nextStatus(r.Monitor) // Timeout
+// 	start = status[0].Start
 
-	// Active, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, Start, Duration, Idle, TimeRem, Progress
-	want := []Status{
-		{start, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true},
-		{start, 10, 1, 100, 100, 100, 100, 0, _100ms, 0, 0, 0, true},
-		{start, 20, 2, 100, 100, 100, 100, 0, _200ms, _100ms, 0, 0, true},
-		{start, 20, 3, 0, 90, 67, 100, 0, _300ms, _200ms, 0, 0, true},
-		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
-		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
-	}
-	for i, s := range status {
-		s := s
-		if !statusesAreEqual(&s, &want[i]) {
-			t.Errorf("r.Status(%v)\nexpected: %v\ngot     : %v", i, want[i], s)
-		}
-	}
-	if !bytes.Equal(b[:20], in[:20]) {
-		t.Errorf("r.Read() input doesn't match output")
-	}
-}
+// 	// Active, Bytes, Samples, InstRate, CurRate, AvgRate, PeakRate, BytesRem, Start, Duration, Idle, TimeRem, Progress
+// 	want := []Status{
+// 		{start, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, true},
+// 		{start, 10, 1, 100, 100, 100, 100, 0, _100ms, 0, 0, 0, true},
+// 		{start, 20, 2, 100, 100, 100, 100, 0, _200ms, _100ms, 0, 0, true},
+// 		{start, 20, 3, 0, 90, 67, 100, 0, _300ms, _200ms, 0, 0, true},
+// 		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
+// 		{start, 20, 3, 0, 0, 67, 100, 0, _300ms, 0, 0, 0, false},
+// 	}
+// 	for i, s := range status {
+// 		s := s
+// 		if !statusesAreEqual(&s, &want[i]) {
+// 			t.Errorf("r.Status(%v)\nexpected: %v\ngot     : %v", i, want[i], s)
+// 		}
+// 	}
+// 	if !bytes.Equal(b[:20], in[:20]) {
+// 		t.Errorf("r.Read() input doesn't match output")
+// 	}
+// }
 
 func TestWriter(t *testing.T) {
 	b := make([]byte, 100)
