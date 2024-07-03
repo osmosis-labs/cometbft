@@ -64,7 +64,6 @@ var (
 // Otherwise they are vulnerable to MITM.
 // (TODO(ismail): see also https://github.com/tendermint/tendermint/issues/3010)
 type SecretConnection struct {
-
 	// immutable
 	recvAead cipher.AEAD
 	sendAead cipher.AEAD
@@ -73,6 +72,7 @@ type SecretConnection struct {
 
 	conn       io.ReadWriteCloser
 	connWriter *bufio.Writer
+	connReader io.Reader
 
 	// net.Conn must be thread safe:
 	// https://golang.org/pkg/net/#Conn.
@@ -155,6 +155,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	sc := &SecretConnection{
 		conn:            conn,
 		connWriter:      bufio.NewWriterSize(conn, defaultWriteBufferSize),
+		connReader:      bufio.NewReaderSize(conn, defaultReadBufferSize),
 		recvBuffer:      nil,
 		recvNonce:       new([aeadNonceSize]byte),
 		sendNonce:       new([aeadNonceSize]byte),
@@ -250,7 +251,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 
 	// read off the conn
 	sealedFrame := sc.recvSealedFrame
-	_, err = io.ReadFull(sc.conn, sealedFrame)
+	_, err = io.ReadFull(sc.connReader, sealedFrame)
 	if err != nil {
 		return
 	}
