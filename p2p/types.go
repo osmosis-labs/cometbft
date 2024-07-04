@@ -16,6 +16,12 @@ type Envelope struct {
 	ChannelID byte
 }
 
+// MarshalledEnvelope contains a proto message, its marshalled message, with sender routing info.
+type MarshalledEnvelope struct {
+	Envelope
+	MarshalledMessage []byte
+}
+
 // Unwrapper is a Protobuf message that can contain a variety of inner messages
 // (e.g. via oneof fields). If a Channel's message type implements Unwrapper, the
 // p2p layer will automatically unwrap inbound messages so that reactors do not have to do this themselves.
