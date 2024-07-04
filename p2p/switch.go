@@ -299,9 +299,7 @@ func (sw *Switch) TryBroadcast(e Envelope) {
 	}
 	peers := sw.peers.List()
 	for _, peer := range peers {
-		go func(p Peer) {
-			p.TrySendMarshalled(marshalledEnvelope)
-		}(peer)
+		peer.TrySendMarshalled(marshalledEnvelope)
 	}
 }
 
