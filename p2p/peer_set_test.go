@@ -18,7 +18,8 @@ type mockPeer struct {
 	id ID
 }
 
-func (mp *mockPeer) FlushStop()                                  { mp.Stop() } //nolint:errcheck // ignore error
+func (mp *mockPeer) FlushStop()                                  { mp.Stop() } //nolint:errcheck // ignore erro
+func (mp *mockPeer) HasChannel(byte) bool                        { return true }
 func (mp *mockPeer) TrySendMarshalled(e MarshalledEnvelope) bool { return true }
 
 func (mp *mockPeer) TrySendEnvelope(e Envelope) bool { return true }
