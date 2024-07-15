@@ -45,6 +45,7 @@ func NewPeer(ip net.IP) *Peer {
 func (mp *Peer) FlushStop()                                      { mp.Stop() } //nolint:errcheck //ignore error
 func (mp *Peer) TrySend(_ p2p.Envelope) bool                     { return true }
 func (mp *Peer) TrySendMarshalled(e p2p.MarshalledEnvelope) bool { return true }
+func (mp *Peer) HasChannel(_ byte) bool                          { return true }
 func (mp *Peer) Send(_ p2p.Envelope) bool                        { return true }
 func (mp *Peer) NodeInfo() p2p.NodeInfo {
 	return p2p.DefaultNodeInfo{
