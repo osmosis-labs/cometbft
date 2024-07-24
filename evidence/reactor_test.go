@@ -212,6 +212,7 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 		e, ok := i.(p2p.Envelope)
 		return ok && e.ChannelID == evidence.EvidenceChannel
 	})).Return(false)
+	p.On("HasChannel", evidence.EvidenceChannel).Maybe().Return(true)
 	quitChan := make(<-chan struct{})
 	p.On("Quit").Return(quitChan)
 	ps := peerState{2}

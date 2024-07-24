@@ -36,6 +36,7 @@ type Peer interface {
 	Status() cmtconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
+	HasChannel(chID byte) bool // Does the peer implement this channel?
 	SendEnvelope(Envelope) bool
 	TrySendEnvelope(Envelope) bool
 	TrySendMarshalled(MarshalledEnvelope) bool
@@ -114,7 +115,7 @@ type peer struct {
 
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
-	// cached to avoid copying nodeInfo in hasChannel
+	// cached to avoid copying nodeInfo in HasChannel
 	nodeInfo NodeInfo
 	channels []byte
 
@@ -288,7 +289,7 @@ func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bo
 func (p *peer) sendMarshalled(chID byte, msgType reflect.Type, msgBytes []byte, sendFunc func(byte, []byte) bool) bool {
 	if !p.IsRunning() {
 		return false
-	} else if !p.hasChannel(chID) {
+	} else if !p.HasChannel(chID) {
 		return false
 	}
 	res := sendFunc(chID, msgBytes)
@@ -308,9 +309,8 @@ func (p *peer) Set(key string, data interface{}) {
 	p.Data.Set(key, data)
 }
 
-// hasChannel returns true if the peer reported
-// knowing about the given chID.
-func (p *peer) hasChannel(chID byte) bool {
+// HasChannel returns whether the peer reported implementing this channel.
+func (p *peer) HasChannel(chID byte) bool {
 	for _, ch := range p.channels {
 		if ch == chID {
 			return true
@@ -318,13 +318,13 @@ func (p *peer) hasChannel(chID byte) bool {
 	}
 	// NOTE: probably will want to remove this
 	// but could be helpful while the feature is new
-	// p.Logger.Debug(
-	// 	"Unknown channel for peer",
-	// 	"channel",
-	// 	chID,
-	// 	"channels",
-	// 	p.channels,
-	// )
+	p.Logger.Debug(
+		"Unknown channel for peer",
+		"channel",
+		chID,
+		"channels",
+		p.channels,
+	)
 	return false
 }
 
