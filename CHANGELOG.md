@@ -3,6 +3,10 @@
 ## Unreleased (I think)
 
 * [#128](https://github.com/osmosis-labs/cometbft/pull/128) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510)
+* [#126]() Remove p2p allocations for wrapping outbound packets 
+* [#125]() Fix marshalling and concurrency overhead within broadcast routines 
+* perf(p2p): Only update send monitor once per batch packet msg send (#3382)
+* [#124]() Secret connection read buffer 
 * [#123](https://github.com/osmosis-labs/cometbft/pull/123)  perf(p2p/conn): Remove unneeded global pool buffers in secret connection #3403 
 * perf(p2p): Delete expensive debug log already slated for deletion #3412 
 * perf(p2p): Reduce the p2p metrics overhead. #3411 
