@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/cosmos/gogoproto/proto"
@@ -266,33 +265,17 @@ func (sw *Switch) OnStop() {
 // Peers
 
 // Broadcast runs a go routine for each attempted send, which will block trying
-// to send for defaultSendTimeoutSeconds. Returns a channel which receives
-// success values for each attempted send (false if times out). Channel will be
-// closed once msg bytes are sent to all peers (or time out).
+// to send for defaultSendTimeoutSeconds.
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) Broadcast(e Envelope) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
-
+func (sw *Switch) Broadcast(e Envelope) {
 	peers := sw.peers.List()
-	var wg sync.WaitGroup
-	wg.Add(len(peers))
-	successChan := make(chan bool, len(peers))
-
 	for _, peer := range peers {
 		go func(p Peer) {
-			defer wg.Done()
 			success := p.Send(e)
-			successChan <- success
+			_ = success
 		}(peer)
 	}
-
-	go func() {
-		wg.Wait()
-		close(successChan)
-	}()
-
-	return successChan
 }
 
 // NumPeers returns the count of outbound/inbound and outbound-dialing peers.
