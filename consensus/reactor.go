@@ -474,10 +474,12 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 		Type:   vote.Type,
 		Index:  vote.ValidatorIndex,
 	}
-	conR.Switch.Broadcast(p2p.Envelope{
-		ChannelID: StateChannel,
-		Message:   msg,
-	})
+	go func() {
+		conR.Switch.Broadcast(p2p.Envelope{
+			ChannelID: StateChannel,
+			Message:   msg,
+		})
+	}()
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
