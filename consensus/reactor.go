@@ -536,9 +536,9 @@ func (conR *Reactor) updateRoundStateRoutine() {
 			return
 		}
 		rs := conR.conS.GetRoundState()
-		conR.mtx.Lock()
+		conR.rsMtx.Lock()
 		conR.rs = rs
-		conR.mtx.Unlock()
+		conR.rsMtx.Unlock()
 	}
 }
 
@@ -551,8 +551,8 @@ func (conR *Reactor) updateRoundStateNoCsLock() {
 }
 
 func (conR *Reactor) getRoundState() *cstypes.RoundState {
-	conR.mtx.RLock()
-	defer conR.mtx.RUnlock()
+	conR.rsMtx.RLock()
+	defer conR.rsMtx.RUnlock()
 	return conR.rs
 }
 
