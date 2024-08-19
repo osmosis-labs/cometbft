@@ -71,7 +71,6 @@ func (memR *Reactor) OnStart() error {
 }
 
 func (memR *Reactor) OnStop() {
-	close(memR.peerTxProcesserChan)
 }
 
 // GetChannels implements Reactor by returning the list of channels for this
