@@ -1365,6 +1365,16 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
+// SetHasVote sets the given vote as known by the peer.
+func (ps *PeerState) SetHasVoteFromPeer(vote *types.Vote, csHeight int64, valSize, lastCommitSize int) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.ensureVoteBitArrays(csHeight, valSize)
+	ps.ensureVoteBitArrays(csHeight-1, lastCommitSize)
+	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
+}
+
 func (ps *PeerState) setHasVote(height int64, round int32, voteType cmtproto.SignedMsgType, index int32) {
 	ps.logger.Debug("setHasVote",
 		"peerH/R",

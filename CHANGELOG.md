@@ -18,6 +18,7 @@ It also includes a few other bug fixes and performance improvements.
 - `[indexer]` Fixed ineffective select break statements; they now
   point to their enclosing for loop label to exit
   ([\#3544](https://github.com/cometbft/cometbft/issues/3544))
+- [#91](https://github.com/osmosis-labs/cometbft/pull/91) perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
 
 ## v0.38.10
 
