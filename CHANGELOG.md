@@ -22,6 +22,11 @@ It also includes a few other bug fixes and performance improvements.
 * [#109](https://github.com/osmosis-labs/cometbft/pull/109)  perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
 * [#105](https://github.com/osmosis-labs/cometbft/pull/105) perf(p2p)!: Remove PeerSendBytesTotal metric #3184
 * [#95](https://github.com/osmosis-labs/cometbft/pull/95) perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
+* [#128](https://github.com/osmosis-labs/cometbft/pull/128) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510)
+* [#126]() Remove p2p allocations for wrapping outbound packets 
+* [#125]() Fix marshalling and concurrency overhead within broadcast routines 
+* perf(p2p): Only update send monitor once per batch packet msg send (#3382)
+* [#124]() Secret connection read buffer 
 
 ## v0.38.10
 
