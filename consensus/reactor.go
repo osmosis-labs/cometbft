@@ -332,6 +332,17 @@ func (conR *Reactor) Receive(e p2p.Envelope) {
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
 			conR.Metrics.BlockParts.With("peer_id", string(e.Src.ID())).Add(1)
+
+			conR.rsMtx.RLock()
+			height, blockParts := conR.rs.Height, conR.rs.ProposalBlockParts
+			conR.rsMtx.RUnlock()
+
+			allowFutureBlockPart := true
+			ok := allowProcessingProposalBlockPart(msg, conR.Logger, conR.Metrics, height, blockParts, allowFutureBlockPart, e.Src.ID())
+			if !ok {
+				return
+			}
+
 			conR.conS.peerMsgQueue <- msgInfo{msg, e.Src.ID()}
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
