@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## Osmosis Specific Info
+
+This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc50517126673](https://github.com/cometbft/cometbft/commit/e1b4453baf0af6487ad187c7f17dc50517126673) commit of the [v0.38.11](https://github.com/cometbft/cometbft/releases/tag/v0.38.11) tag. If you catch this fork up with the latest changes from upstream, please start at the commit after the one mentioned above, and work your way to the tip (or desired commit) of the upstream branch. Then, update this message with the new commit hash. Also, when you add a new PRs to this branch on Osmosis and it is not yet upstreamed, make sure you add it both directly below AND in the respective release section of this file.
+
+### Osmosis Specific PRs (should upstream)
+
+* all PRs are upstream in v1
+
+### Osmosis Specific PRs (should not upstream)
+
+* all PRs are upstream in v1
+
+## [Unreleased]
+
+## v26
+
+## [v0.38.11-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/TODO)
+
+### Osmosis Specific Changes
+
+* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+* [1c07c7c](https://github.com/osmosis-labs/cometbft/commit/1c07c7c22ae1bb77039ddc642cc706b23e17ec56) TxSearch pagination
+* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+* [#131](https://github.com/osmosis-labs/cometbft/pull/131) perf: Make mempool update async from block.Commit (#3008) #131
+* [#132](https://github.com/osmosis-labs/cometbft/pull/132) perf: Make every gossip thread use its own randomness instance, reduc… #132
+* [#133](https://github.com/osmosis-labs/cometbft/pull/133) perf(consensus): add simplistic block validation cache (#3070) #133
+* [#134](https://github.com/osmosis-labs/cometbft/pull/134) perf(p2p): Remove broadcast return channel (backport #3182) (#3480) #134
+* [#135](https://github.com/osmosis-labs/cometbft/pull/135) perf(consensus): Run broadcast routines out of process (backport #3180 #135
+* [#136](https://github.com/osmosis-labs/cometbft/pull/136) Backport https://github.com/osmosis-labs/cometbft/pull/112 #136
+* [#137](https://github.com/osmosis-labs/cometbft/pull/137) perf: backport CS lock removal cometbft#3211 cometbft#3156 #137
+* [#138](https://github.com/osmosis-labs/cometbft/pull/138) Move blockpart redundancy checks to reactor cometbft#3161 #138
+* [#139](https://github.com/osmosis-labs/cometbft/pull/139) perf: mempool async processing #139 forwardport [#109](https://github.com/osmosis-labs/cometbft/pull/109)
+* [#140](https://github.com/osmosis-labs/cometbft/pull/140) perf(p2p): Reduce the p2p metrics overhead. #3411 #140
+* [#141](https://github.com/osmosis-labs/cometbft/pull/141) bp: Don't remarshal within broadcast #125 #141
+* [#142](https://github.com/osmosis-labs/cometbft/pull/142) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510) #142
+* [#143](https://github.com/osmosis-labs/cometbft/pull/143) fix: comment out expensive debug logs #143
+
+## v0.38.11
+
 This release fixes a panic in consensus where CometBFT would previously panic
 if there's no extension signature in non-nil Precommit EVEN IF vote extensions
 themselves are disabled.
