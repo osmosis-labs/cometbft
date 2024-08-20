@@ -20,9 +20,17 @@ This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc5051712667
 
 ### Osmosis Specific Changes
 
+* perf(p2p): Only update send monitor once per batch packet msg send (#3382)
 * [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
 * [1c07c7c](https://github.com/osmosis-labs/cometbft/commit/1c07c7c22ae1bb77039ddc642cc706b23e17ec56) TxSearch pagination
-* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+* [#91](https://github.com/osmosis-labs/cometbft/pull/91) perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
+* [#95](https://github.com/osmosis-labs/cometbft/pull/95) perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
+* [#105](https://github.com/osmosis-labs/cometbft/pull/105) perf(p2p)!: Remove PeerSendBytesTotal metric #3184
+* [#109](https://github.com/osmosis-labs/cometbft/pull/109)  perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
+* [#124](https://github.com/osmosis-labs/cometbft/pull/124) Secret connection read buffer 
+* [#125](https://github.com/osmosis-labs/cometbft/pull/125) Fix marshalling and concurrency overhead within broadcast routines 
+* [#126](https://github.com/osmosis-labs/cometbft/pull/126) Remove p2p allocations for wrapping outbound packets 
+* [#128](https://github.com/osmosis-labs/cometbft/pull/128) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510)
 * [#131](https://github.com/osmosis-labs/cometbft/pull/131) perf: Make mempool update async from block.Commit (#3008) #131
 * [#132](https://github.com/osmosis-labs/cometbft/pull/132) perf: Make every gossip thread use its own randomness instance, reduc… #132
 * [#133](https://github.com/osmosis-labs/cometbft/pull/133) perf(consensus): add simplistic block validation cache (#3070) #133
@@ -36,6 +44,7 @@ This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc5051712667
 * [#141](https://github.com/osmosis-labs/cometbft/pull/141) bp: Don't remarshal within broadcast #125 #141
 * [#142](https://github.com/osmosis-labs/cometbft/pull/142) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510) #142
 * [#143](https://github.com/osmosis-labs/cometbft/pull/143) fix: comment out expensive debug logs #143
+* [#f2f9426](https://github.com/osmosis-labs/cometbft/commit/f2f9426c6985f2ea63ceb879c26858cf7f42f186) perf(blocksync): Parallelize logic for receiving a block from a peer. (backport cometbft#3554) (cometbft#3592)
 
 ## v0.38.11
 
@@ -57,15 +66,6 @@ It also includes a few other bug fixes and performance improvements.
 - `[indexer]` Fixed ineffective select break statements; they now
   point to their enclosing for loop label to exit
   ([\#3544](https://github.com/cometbft/cometbft/issues/3544))
-- [#91](https://github.com/osmosis-labs/cometbft/pull/91) perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
-* [#109](https://github.com/osmosis-labs/cometbft/pull/109)  perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
-* [#105](https://github.com/osmosis-labs/cometbft/pull/105) perf(p2p)!: Remove PeerSendBytesTotal metric #3184
-* [#95](https://github.com/osmosis-labs/cometbft/pull/95) perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
-* [#128](https://github.com/osmosis-labs/cometbft/pull/128) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510)
-* [#126]() Remove p2p allocations for wrapping outbound packets 
-* [#125]() Fix marshalling and concurrency overhead within broadcast routines 
-* perf(p2p): Only update send monitor once per batch packet msg send (#3382)
-* [#124]() Secret connection read buffer 
 
 ## v0.38.10
 
