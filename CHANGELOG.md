@@ -2,21 +2,9 @@
 
 ## Osmosis Specific Info
 
-This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc50517126673](https://github.com/cometbft/cometbft/commit/e1b4453baf0af6487ad187c7f17dc50517126673) commit of the [v0.38.11](https://github.com/cometbft/cometbft/releases/tag/v0.38.11) tag. If you catch this fork up with the latest changes from upstream, please start at the commit after the one mentioned above, and work your way to the tip (or desired commit) of the upstream branch. Then, update this message with the new commit hash. Also, when you add a new PRs to this branch on Osmosis and it is not yet upstreamed, make sure you add it both directly below AND in the respective release section of this file.
-
-### Osmosis Specific PRs (should upstream)
-
-* all PRs are upstream in v1
-
-### Osmosis Specific PRs (should not upstream)
-
-* all PRs are upstream in v1
-
-## [Unreleased]
-
 ## v26
 
-## [v0.38.11-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/TODO)
+## [v0.38.11-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.11-v26-osmo-1)
 
 ### Osmosis Specific Changes
 
@@ -46,6 +34,49 @@ This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc5051712667
 * [#143](https://github.com/osmosis-labs/cometbft/pull/143) fix: comment out expensive debug logs #143
 * [#f2f9426](https://github.com/osmosis-labs/cometbft/commit/f2f9426c6985f2ea63ceb879c26858cf7f42f186) perf(blocksync): Parallelize logic for receiving a block from a peer. (backport cometbft#3554) (cometbft#3592)
 
+## v0.38.12
+
+## [Unreleased]
+
+*September 3, 2024*
+
+This release includes a security fix for the light client and is recommended
+for all users.
+
+### BUG FIXES
+
+- `[light]` Cross-check proposer priorities in retrieved validator sets
+  ([\#ASA-2024-009](https://github.com/cometbft/cometbft/security/advisories/GHSA-g5xx-c4hv-9ccc))
+- `[privval]` Ignore duplicate privval listen when already connected ([\#3828](https://github.com/cometbft/cometbft/issues/3828)
+
+### DEPENDENCIES
+
+- `[crypto/secp256k1]` Adjust to breaking interface changes in
+  `btcec/v2` latest release, while avoiding breaking changes to
+  local CometBFT functions
+  ([\#3728](https://github.com/cometbft/cometbft/pull/3728))
+
+### IMPROVEMENTS
+
+- `[types]` Check that proposer is one of the validators in `ValidateBasic`
+  ([\#ASA-2024-009](https://github.com/cometbft/cometbft/security/advisories/GHSA-g5xx-c4hv-9ccc))
+- `[e2e]` Add `log_level` option to manifest file
+  ([#3819](https://github.com/cometbft/cometbft/pull/3819)).
+- `[e2e]` Add `log_format` option to manifest file
+  ([#3836](https://github.com/cometbft/cometbft/issues/3836)).
+
+## v0.38.11
+
+This v0.38.11 branch was created at the [e1b4453baf0af6487ad187c7f17dc50517126673](https://github.com/cometbft/cometbft/commit/e1b4453baf0af6487ad187c7f17dc50517126673) commit of the [v0.38.11](https://github.com/cometbft/cometbft/releases/tag/v0.38.11) tag. If you catch this fork up with the latest changes from upstream, please start at the commit after the one mentioned above, and work your way to the tip (or desired commit) of the upstream branch. Then, update this message with the new commit hash. Also, when you add a new PRs to this branch on Osmosis and it is not yet upstreamed, make sure you add it both directly below AND in the respective release section of this file.
+
+### Osmosis Specific PRs (should upstream)
+
+* all PRs are upstream in v1
+
+### Osmosis Specific PRs (should not upstream)
+
+* all PRs are upstream in v1
+
 ## v0.38.11
 
 This release fixes a panic in consensus where CometBFT would previously panic
@@ -56,8 +87,6 @@ It also includes a few other bug fixes and performance improvements.
 
 ### BUG FIXES
 
-- `[types]` Added missing JSON tags to `DuplicateVoteEvidence` and `LightClientAttackEvidence`
-  types ([\#3528](https://github.com/cometbft/cometbft/issues/3528))
 - `[types]` Only check IFF vote is a non-nil Precommit if extensionsEnabled
   types ([\#3565](https://github.com/cometbft/cometbft/issues/3565))
 
