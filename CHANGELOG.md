@@ -1,10 +1,15 @@
 # CHANGELOG
 
+## [Unreleased]
+
 ## Osmosis Specific Info
 
 ## v26
 
-## [v0.38.11-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.11-v26-osmo-1)
+## [v0.38.12-v26-osmo-2](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.12-v26-osmo-2)
+
+This v0.38.12 branch was created at the [cf7836ad7b63bc1421deed23beb8630a3705b5d1](https://github.com/cometbft/cometbft/commit/cf7836ad7b63bc1421deed23beb8630a3705b5d1) commit of the [v0.38.12](https://github.com/cometbft/cometbft/releases/tag/v0.38.12) tag. If you catch this fork up with the latest changes from upstream, please start at the commit after the one mentioned above, and work your way to the tip (or desired commit) of the upstream branch. Then, update this message with the new commit hash. Also, when you add a new PRs to this branch on Osmosis and it is not yet upstreamed, make sure you add it both directly below AND in the respective release section of this file.
+
 
 ### Osmosis Specific Changes
 
@@ -35,8 +40,6 @@
 * [#f2f9426](https://github.com/osmosis-labs/cometbft/commit/f2f9426c6985f2ea63ceb879c26858cf7f42f186) perf(blocksync): Parallelize logic for receiving a block from a peer. (backport cometbft#3554) (cometbft#3592)
 
 ## v0.38.12
-
-## [Unreleased]
 
 *September 3, 2024*
 
