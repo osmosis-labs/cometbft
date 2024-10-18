@@ -4,7 +4,7 @@
 
 ## v27
 
-## [v0.38.11-v27-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.11-v27-osmo-1)
+## [v0.38.12-v27-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.12-v27-osmo-1)
 
 ### Osmosis Specific Changes
 
