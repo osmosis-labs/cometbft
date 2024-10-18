@@ -2,6 +2,45 @@
 
 ## Osmosis Specific Info
 
+## v27
+
+## [v0.38.11-v27-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.11-v27-osmo-1)
+
+### Osmosis Specific Changes
+
+* [#21](https://github.com/osmosis-labs/cometbft/pull/21) Make websocket's log on success be in Debug, not info
+* [1c07c7c](https://github.com/osmosis-labs/cometbft/commit/1c07c7c22ae1bb77039ddc642cc706b23e17ec56) TxSearch pagination
+* [#83](https://github.com/osmosis-labs/cometbft/pull/83) perf(types): 3x speedup MakePartSet (#3117)
+* [#88](https://github.com/osmosis-labs/cometbft/pull/88) perf(flowrate): Speedup flowrate.Clock (#3016)
+* [#91](https://github.com/osmosis-labs/cometbft/pull/91) perf(consensus): Minor improvement by making add vote only do one peer set mutex call, not 3 (#3156)
+* [#92](https://github.com/osmosis-labs/cometbft/pull/92) perf(consensus): Make some consensus reactor messages take RLock's not WLock's (#3159)
+* [#95](https://github.com/osmosis-labs/cometbft/pull/95) perf(types) Make a new method `GetByAddressMut` for `ValSet`, which does not copy the returned validator. (#3129)
+* [#99](https://github.com/osmosis-labs/cometbft/pull/99) perf(consensus): reuse an internal buffer for block building (#3162)
+* [#101](https://github.com/osmosis-labs/cometbft/pull/101) perf(consensus): Run broadcast routines out of process #3180
+* [#102](https://github.com/osmosis-labs/cometbft/pull/102)  perf(p2p): Remove broadcast return channel #3182
+* [#105](https://github.com/osmosis-labs/cometbft/pull/105) perf(p2p)!: Remove PeerSendBytesTotal metric #3184
+* [#109](https://github.com/osmosis-labs/cometbft/pull/109) perf(p2p,mempool): Make mempool reactor receive not block. (Fixed by either #3209, #3230)
+* [#115](https://github.com/osmosis-labs/cometbft/pull/115) perf(p2p/secretconn): Buffer secret connection writes (#3346) 
+* [#120](https://github.com/osmosis-labs/cometbft/pull/120) perf(consensus): Use TrySend for hasVote/HasBlockPart messages 
+* [#124](https://github.com/osmosis-labs/cometbft/pull/124) Secret connection read buffer 
+* [#125](https://github.com/osmosis-labs/cometbft/pull/125) Fix marshalling and concurrency overhead within broadcast routines 
+* [#126](https://github.com/osmosis-labs/cometbft/pull/126) Remove p2p allocations for wrapping outbound packets 
+* [#128](https://github.com/osmosis-labs/cometbft/pull/128) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510)
+* [#131](https://github.com/osmosis-labs/cometbft/pull/131) perf: Make mempool update async from block.Commit (#3008) #131
+* [#132](https://github.com/osmosis-labs/cometbft/pull/132) perf: Make every gossip thread use its own randomness instance, reduc… #132
+* [#133](https://github.com/osmosis-labs/cometbft/pull/133) perf(consensus): add simplistic block validation cache (#3070) #133
+* [#134](https://github.com/osmosis-labs/cometbft/pull/134) perf(p2p): Remove broadcast return channel (backport #3182) (#3480) #134
+* [#135](https://github.com/osmosis-labs/cometbft/pull/135) perf(consensus): Run broadcast routines out of process (backport #3180 #135
+* [#136](https://github.com/osmosis-labs/cometbft/pull/136) Backport https://github.com/osmosis-labs/cometbft/pull/112 #136
+* [#137](https://github.com/osmosis-labs/cometbft/pull/137) perf: backport CS lock removal cometbft#3211 cometbft#3156 #137
+* [#138](https://github.com/osmosis-labs/cometbft/pull/138) Move blockpart redundancy checks to reactor cometbft#3161 #138
+* [#139](https://github.com/osmosis-labs/cometbft/pull/139) perf: mempool async processing #139 forwardport [#109](https://github.com/osmosis-labs/cometbft/pull/109)
+* [#140](https://github.com/osmosis-labs/cometbft/pull/140) perf(p2p): Reduce the p2p metrics overhead. #3411 #140
+* [#141](https://github.com/osmosis-labs/cometbft/pull/141) bp: Don't remarshal within broadcast #125 #141
+* [#142](https://github.com/osmosis-labs/cometbft/pull/142) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510) #142
+* [#143](https://github.com/osmosis-labs/cometbft/pull/143) fix: comment out expensive debug logs #143
+* [#f2f9426](https://github.com/osmosis-labs/cometbft/commit/f2f9426c6985f2ea63ceb879c26858cf7f42f186) perf(blocksync): Parallelize logic for receiving a block from a peer. (backport cometbft#3554) (cometbft#3592)
+
 ## v26
 
 ## [v0.38.11-v26-osmo-1](https://github.com/osmosis-labs/cometbft/releases/tag/v0.38.11-v26-osmo-1)
