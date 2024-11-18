@@ -46,6 +46,7 @@ This v0.38.12 branch was created at the [cf7836ad7b63bc1421deed23beb8630a3705b5d
 * [#142](https://github.com/osmosis-labs/cometbft/pull/142) feat(p2p): render HasChannel(chID) is a public p2p.Peer method (#3510) #142
 * [#143](https://github.com/osmosis-labs/cometbft/pull/143) fix: comment out expensive debug logs #143
 * [#f2f9426](https://github.com/osmosis-labs/cometbft/commit/f2f9426c6985f2ea63ceb879c26858cf7f42f186) perf(blocksync): Parallelize logic for receiving a block from a peer. (backport cometbft#3554) (cometbft#3592)
+* [#150](https://github.com/osmosis-labs/cometbft/pull/150) fix: copy TxIndex TxBytes value 
 
 ## v26
 
