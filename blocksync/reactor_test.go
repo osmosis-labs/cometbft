@@ -60,6 +60,15 @@ type ReactorPair struct {
 	app     proxy.AppConns
 }
 
+func stopReactorPairs(t *testing.T, reactorPairs []ReactorPair) {
+	for _, r := range reactorPairs {
+		err := r.reactor.Stop()
+		require.NoError(t, err)
+		err = r.app.Stop()
+		require.NoError(t, err)
+	}
+}
+
 func newReactor(
 	t *testing.T,
 	logger log.Logger,
@@ -201,14 +210,7 @@ func TestNoBlockResponse(t *testing.T) {
 		return s
 	}, p2p.Connect2Switches)
 
-	defer func() {
-		for _, r := range reactorPairs {
-			err := r.reactor.Stop()
-			require.NoError(t, err)
-			err = r.app.Stop()
-			require.NoError(t, err)
-		}
-	}()
+	defer stopReactorPairs(t, reactorPairs)
 
 	tests := []struct {
 		height   int64
@@ -256,12 +258,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
 	otherChain := newReactor(t, log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
-	defer func() {
-		err := otherChain.reactor.Stop()
-		require.Error(t, err)
-		err = otherChain.app.Stop()
-		require.NoError(t, err)
-	}()
+	defer stopReactorPairs(t, []ReactorPair{otherChain})
 
 	reactorPairs := make([]ReactorPair, 4)
 
@@ -275,18 +272,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 		return s
 	}, p2p.Connect2Switches)
 
-	defer func() {
-		for _, r := range reactorPairs {
-			err := r.reactor.Stop()
-			require.NoError(t, err)
-
-			err = r.app.Stop()
-			require.NoError(t, err)
-		}
-	}()
+	defer stopReactorPairs(t, reactorPairs)
 
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 		caughtUp := true
 		for _, r := range reactorPairs {
 			if !r.reactor.pool.IsCaughtUp() {
@@ -338,14 +327,7 @@ func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
 	reactorPairs := make([]ReactorPair, 1, 2)
 	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs[0].reactor.switchToConsensusMs = 50
-	defer func() {
-		for _, r := range reactorPairs {
-			err := r.reactor.Stop()
-			require.NoError(t, err)
-			err = r.app.Stop()
-			require.NoError(t, err)
-		}
-	}()
+	defer stopReactorPairs(t, reactorPairs)
 
 	reactorPairs = append(reactorPairs, newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight))
 
@@ -404,14 +386,7 @@ func ExtendedCommitNetworkHelper(t *testing.T, maxBlockHeight int64, enableVoteE
 	reactorPairs := make([]ReactorPair, 1, 2)
 	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs[0].reactor.switchToConsensusMs = 50
-	defer func() {
-		for _, r := range reactorPairs {
-			err := r.reactor.Stop()
-			require.NoError(t, err)
-			err = r.app.Stop()
-			require.NoError(t, err)
-		}
-	}()
+	defer stopReactorPairs(t, reactorPairs)
 
 	reactorPairs = append(reactorPairs, newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight, invalidBlockHeightAt))
 

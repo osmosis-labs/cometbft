@@ -671,6 +671,8 @@ func (bpr *bpRequester) setBlock(block *types.Block, extCommit *types.ExtendedCo
 		return true // getting a block from both peers is not an error
 	}
 
+	// TODO: Shall we run block validation here?
+
 	bpr.block = block
 	bpr.extCommit = extCommit
 	bpr.gotBlockFrom = peerID
