@@ -258,7 +258,12 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
 	otherChain := newReactor(t, log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
-	defer stopReactorPairs(t, []ReactorPair{otherChain})
+	defer func() {
+		err := otherChain.reactor.Stop()
+		require.Error(t, err)
+		err = otherChain.app.Stop()
+		require.NoError(t, err)
+	}()
 
 	reactorPairs := make([]ReactorPair, 4)
 
@@ -275,7 +280,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	defer stopReactorPairs(t, reactorPairs)
 
 	for {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		caughtUp := true
 		for _, r := range reactorPairs {
 			if !r.reactor.pool.IsCaughtUp() {
