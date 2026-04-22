@@ -1,4 +1,6 @@
-# CometBFT
+# CometBFT - Osmosis Fork
+
+This is now archived, the Osmosis node is now on mainline cometbft.
 
 [Byzantine-Fault Tolerant][bft] [State Machine Replication][smr]. Or
 [Blockchain], for short.
