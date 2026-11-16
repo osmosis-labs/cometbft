@@ -12,6 +12,7 @@ import (
 
 	"github.com/cometbft/cometbft/crypto"
 	"github.com/cometbft/cometbft/crypto/merkle"
+	"github.com/cometbft/cometbft/crypto/mldsa65"
 	"github.com/cometbft/cometbft/crypto/tmhash"
 	"github.com/cometbft/cometbft/libs/bits"
 	cmtbytes "github.com/cometbft/cometbft/libs/bytes"
@@ -682,8 +683,10 @@ func (cs CommitSig) ValidateBasic() error {
 		if len(cs.Signature) == 0 {
 			return errors.New("signature is missing")
 		}
-		if len(cs.Signature) > MaxSignatureSize {
-			return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
+		// Remote commits may contain ML-DSA-65 signatures. Verification
+		// checks the signature against the corresponding validator key.
+		if len(cs.Signature) > MaxSignatureSize && len(cs.Signature) != mldsa65.SignatureSize {
+			return fmt.Errorf("signature is too big (classic max: %d, ML-DSA-65 size: %d)", MaxSignatureSize, mldsa65.SignatureSize)
 		}
 	}
 
